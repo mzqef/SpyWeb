@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpyWeb Demo Page</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    
+    .section {
+      margin-bottom: 30px;
+      padding: 20px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+    }
+    
+    .section h2 {
+      color: #555;
+      margin-bottom: 15px;
+      font-size: 20px;
+    }
+    
+    .info-box {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+    }
+    
+    .sensitive-data {
+      background: #fff3cd;
+      padding: 10px;
+      border-left: 4px solid #ffc107;
+      margin: 10px 0;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #555;
+      font-weight: 500;
+    }
+    
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="tel"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .card {
+      background: white;
+      border: 2px solid #007bff;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 10px 0;
+    }
+    
+    .balance {
+      font-size: 32px;
+      font-weight: bold;
+      color: #28a745;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    th {
+      background: #f8f9fa;
+      font-weight: 600;
+    }
+    
+    .instructions {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+    }
+    
+    .instructions h3 {
+      color: #0c5460;
+      margin-bottom: 10px;
+    }
+    
+    .instructions ol {
+      margin-left: 20px;
+      color: #0c5460;
+    }
+    
+    .instructions li {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="instructions">
+      <h3>📋 How to use SpyWeb Extension</h3>
+      <ol>
+        <li>Click the SpyWeb extension icon in your browser toolbar</li>
+        <li>Choose your mask type (text, color, blur, or image)</li>
+        <li>Select "Current Website Only" or "All Websites"</li>
+        <li>Click "Start Inspection"</li>
+        <li>Hover over any element below to highlight it</li>
+        <li>Click on elements you want to mask (try the sensitive data boxes!)</li>
+        <li>Click "Stop Inspection" when done</li>
+      </ol>
+    </div>
+
+    <h1>SpyWeb Demo Page</h1>
+    <p>This page contains various elements with sensitive information that you can mask using the SpyWeb extension.</p>
+    
+    <div class="section">
+      <h2>Personal Information</h2>
+      <div class="info-box">
+        <div class="sensitive-data">
+          <strong>Full Name:</strong> John Doe
+        </div>
+        <div class="sensitive-data">
+          <strong>Email:</strong> john.doe@example.com
+        </div>
+        <div class="sensitive-data">
+          <strong>Phone:</strong> +1 (555) 123-4567
+        </div>
+        <div class="sensitive-data">
+          <strong>SSN:</strong> 123-45-6789
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>Login Form</h2>
+      <form>
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" value="john.doe" placeholder="Enter username">
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" value="john.doe@example.com" placeholder="Enter email">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" value="SuperSecret123!" placeholder="Enter password">
+        </div>
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" value="+1-555-123-4567" placeholder="Enter phone">
+        </div>
+      </form>
+    </div>
+    
+    <div class="section">
+      <h2>Financial Information</h2>
+      <div class="card">
+        <h3>Bank Account</h3>
+        <div class="sensitive-data">
+          <strong>Account Number:</strong> 1234567890
+        </div>
+        <div class="sensitive-data">
+          <strong>Routing Number:</strong> 987654321
+        </div>
+        <div class="balance">$12,345.67</div>
+      </div>
+      
+      <div class="card">
+        <h3>Credit Card</h3>
+        <div class="sensitive-data">
+          <strong>Card Number:</strong> 4532 1234 5678 9010
+        </div>
+        <div class="sensitive-data">
+          <strong>CVV:</strong> 123
+        </div>
+        <div class="sensitive-data">
+          <strong>Expiry:</strong> 12/25
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>Transaction History</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Account</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>2026-01-24</td>
+            <td>Salary Deposit</td>
+            <td class="sensitive-data">$5,000.00</td>
+            <td class="sensitive-data">****7890</td>
+          </tr>
+          <tr>
+            <td>2026-01-23</td>
+            <td>Rent Payment</td>
+            <td class="sensitive-data">$1,500.00</td>
+            <td class="sensitive-data">****7890</td>
+          </tr>
+          <tr>
+            <td>2026-01-22</td>
+            <td>Grocery Store</td>
+            <td class="sensitive-data">$127.45</td>
+            <td class="sensitive-data">****9010</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="section">
+      <h2>API Keys & Tokens</h2>
+      <div class="info-box">
+        <div class="sensitive-data">
+          <strong>API Key:</strong> demo_test_key_abc123xyz456789
+        </div>
+        <div class="sensitive-data">
+          <strong>Secret Token:</strong> demo_secret_token_xyz789abc123def456
+        </div>
+        <div class="sensitive-data">
+          <strong>Auth Token:</strong> demo.token.header.payload.signature.example
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
