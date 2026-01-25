@@ -158,11 +158,30 @@ clearAllBtn.addEventListener('click', async () => {
   }
 });
 
+// Save settings and broadcast to content script if inspecting
+async function saveAndBroadcastSettings() {
+  const settings = getCurrentSettings();
+  await chrome.storage.sync.set({ maskSettings: settings });
+  
+  // Broadcast settings change to content script if inspecting (Issue 3)
+  if (inspecting) {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tabs[0]) {
+      chrome.tabs.sendMessage(tabs[0].id, {
+        action: 'updateSettings',
+        settings
+      }).catch(() => {
+        // Content script not loaded, ignore
+      });
+    }
+  }
+}
+
 // Save settings when changed
 document.querySelectorAll('input[name="maskType"], input[name="maskScope"]').forEach(input => {
-  input.addEventListener('change', saveSettings);
+  input.addEventListener('change', saveAndBroadcastSettings);
 });
 
 [maskTextInput, maskColorInput, maskImageInput].forEach(input => {
-  input.addEventListener('input', saveSettings);
+  input.addEventListener('input', saveAndBroadcastSettings);
 });

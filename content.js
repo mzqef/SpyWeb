@@ -357,6 +357,9 @@ function applyMaskToElement(element, maskedElement) {
     // Mark element as masked
     element.classList.add('spyweb-masked');
     
+    // Hide the original image/video so only the mask is visible
+    element.style.visibility = 'hidden';
+    
     // Create mask overlay
     const mask = createMaskElement(element, maskedElement);
     mask.style.pointerEvents = 'none';
@@ -381,6 +384,10 @@ function applyMaskToElement(element, maskedElement) {
       mask.style.pointerEvents = 'none';
       element.style.color = 'transparent';
       element.style.caretColor = 'black';
+    } else {
+      // Hide the original text content so only the mask is visible
+      // We do this by making the element's children invisible
+      hideOriginalContent(element);
     }
     
     // For SVG/icon elements, ensure proper masking
@@ -392,6 +399,30 @@ function applyMaskToElement(element, maskedElement) {
     element.style.position = 'relative';
     element.appendChild(mask);
   }
+}
+
+// Hide the original content of an element so the mask fully replaces it
+function hideOriginalContent(element) {
+  // Store original visibility state for potential restoration
+  element.setAttribute('data-spyweb-original-visibility', 'true');
+  
+  // Hide all child nodes except the mask
+  Array.from(element.childNodes).forEach(child => {
+    if (child.nodeType === Node.TEXT_NODE) {
+      // For text nodes, wrap in a span and hide
+      if (child.textContent.trim()) {
+        const span = document.createElement('span');
+        span.className = 'spyweb-hidden-content';
+        span.style.visibility = 'hidden';
+        span.textContent = child.textContent;
+        child.replaceWith(span);
+      }
+    } else if (child.nodeType === Node.ELEMENT_NODE && !child.classList.contains('spyweb-mask')) {
+      // For element nodes that are not the mask, hide them
+      child.classList.add('spyweb-hidden-content');
+      child.style.visibility = 'hidden';
+    }
+  });
 }
 
 // Apply fallback styling when image fails or is unavailable
@@ -442,6 +473,9 @@ function createMaskElement(element, maskedElement) {
     mask.style.alignItems = 'center';
     mask.style.justifyContent = 'center';
     mask.style.fontSize = '14px';
+    // Set an opaque background to fully hide original content
+    // Use inherited background color from the element's context
+    mask.style.backgroundColor = getInheritedBackgroundColor(element, 'white');
   } else if (maskType === 'inherit') {
     // Use inherited styles with original background preserved
     // The mask must completely hide the original content
@@ -571,11 +605,22 @@ function stopInspection() {
 async function refreshMasks() {
   // Remove all existing masks
   document.querySelectorAll('.spyweb-mask').forEach(m => m.remove());
+  
+  // Restore hidden content
+  document.querySelectorAll('.spyweb-hidden-content').forEach(el => {
+    el.classList.remove('spyweb-hidden-content');
+    el.style.visibility = '';
+  });
+  
   document.querySelectorAll('.spyweb-masked').forEach(el => {
     el.classList.remove('spyweb-masked');
+    el.removeAttribute('data-spyweb-original-visibility');
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
       el.style.color = '';
       el.style.caretColor = '';
+    }
+    if (el.tagName === 'IMG' || el.tagName === 'VIDEO') {
+      el.style.visibility = '';
     }
   });
   
@@ -614,6 +659,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ inspecting });
   } else if (request.action === 'refreshMasks') {
     refreshMasks();
+    sendResponse({ success: true });
+  } else if (request.action === 'updateSettings') {
+    // Update settings immediately during inspection (Issue 3)
+    if (inspecting && request.settings) {
+      settings = request.settings;
+    }
+    sendResponse({ success: true });
+  } else if (request.action === 'settingsUpdated') {
+    // Handle settings updated from storage sync
+    if (request.settings) {
+      settings = request.settings;
+    }
     sendResponse({ success: true });
   }
   
