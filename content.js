@@ -317,9 +317,9 @@ function applyMaskToElement(element, maskedElement) {
   const isImageElement = element.tagName === 'IMG';
   
   if (isImageElement) {
-    // Check if wrapper already exists
-    let wrapper = element.parentElement;
-    if (!wrapper || !wrapper.classList.contains('spyweb-img-wrapper')) {
+    // Check if a SpyWeb wrapper already exists for this image
+    let wrapper = element.closest('.spyweb-img-wrapper');
+    if (!wrapper) {
       // Create a wrapper for the image
       wrapper = document.createElement('span');
       wrapper.className = 'spyweb-img-wrapper';
@@ -381,6 +381,17 @@ function applyMaskToElement(element, maskedElement) {
     element.style.position = 'relative';
     element.appendChild(mask);
   }
+}
+
+// Apply fallback styling when image fails or is unavailable
+function applyImageFallbackStyles(mask, message) {
+  mask.style.backgroundColor = '#cccccc';
+  mask.textContent = message;
+  mask.style.display = 'flex';
+  mask.style.alignItems = 'center';
+  mask.style.justifyContent = 'center';
+  mask.style.fontSize = '12px';
+  mask.style.color = '#666';
 }
 
 // Create the mask element with appropriate styling
@@ -459,26 +470,14 @@ function createMaskElement(element, maskedElement) {
       imgEl.style.objectPosition = 'center';
       imgEl.onerror = function() {
         // Fallback if image fails to load
-        mask.style.backgroundColor = '#cccccc';
-        mask.textContent = '⚠️ Image unavailable';
-        mask.style.display = 'flex';
-        mask.style.alignItems = 'center';
-        mask.style.justifyContent = 'center';
-        mask.style.fontSize = '12px';
-        mask.style.color = '#666';
+        applyImageFallbackStyles(mask, '⚠️ Image unavailable');
         this.remove();
       };
       mask.appendChild(imgEl);
       mask.style.backgroundColor = 'transparent';
     } else {
       // No image URL provided, show placeholder
-      mask.style.backgroundColor = '#cccccc';
-      mask.textContent = 'No image URL';
-      mask.style.display = 'flex';
-      mask.style.alignItems = 'center';
-      mask.style.justifyContent = 'center';
-      mask.style.fontSize = '12px';
-      mask.style.color = '#666';
+      applyImageFallbackStyles(mask, 'No image URL');
     }
   }
   
