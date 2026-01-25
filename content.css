@@ -22,12 +22,21 @@
   background-color: #000;
   color: #fff;
   pointer-events: all;
+  overflow: hidden;
 }
 
 /* Input elements with masks should still be interactive */
 input.spyweb-masked,
 textarea.spyweb-masked {
   position: relative;
+}
+
+/* SVG and icon elements */
+svg.spyweb-masked,
+button.spyweb-masked,
+a.spyweb-masked {
+  position: relative;
+  overflow: hidden;
 }
 
 /* Notification */

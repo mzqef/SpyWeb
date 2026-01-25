@@ -32,30 +32,101 @@ function createOverlay() {
   document.body.appendChild(overlay);
 }
 
+// Get the best element for masking (handle SVG, icons, etc.)
+function getBestMaskableElement(element) {
+  // For SVG elements, try to find the parent clickable/interactive element
+  if (element instanceof SVGElement) {
+    let current = element;
+    // Walk up to find a meaningful parent (button, link, or the SVG root)
+    while (current && current instanceof SVGElement) {
+      if (current.tagName.toLowerCase() === 'svg') {
+        // Check if svg has a clickable parent
+        const parent = current.parentElement;
+        if (parent && (parent.tagName === 'BUTTON' || parent.tagName === 'A' || 
+            parent.onclick || parent.getAttribute('role') === 'button' ||
+            parent.classList.contains('btn') || parent.classList.contains('icon') ||
+            parent.style.cursor === 'pointer')) {
+          return parent;
+        }
+        return current;
+      }
+      current = current.parentElement;
+    }
+  }
+  
+  // For icon elements (i, span with icon classes), get their container
+  // Handle both string and SVGAnimatedString className types
+  const classNameStr = typeof element.className === 'string' 
+    ? element.className 
+    : (element.className?.baseVal || '');
+  
+  if (element.tagName === 'I' || (element.tagName === 'SPAN' && 
+      (classNameStr.includes('icon') || classNameStr.includes('fa-') || 
+       classNameStr.includes('material-icons') || classNameStr.includes('glyphicon')))) {
+    const parent = element.parentElement;
+    if (parent && (parent.tagName === 'BUTTON' || parent.tagName === 'A' || 
+        parent.onclick || parent.getAttribute('role') === 'button')) {
+      return parent;
+    }
+  }
+  
+  // For use elements in SVGs
+  if (element.tagName.toLowerCase() === 'use') {
+    let svgParent = element.closest('svg');
+    if (svgParent) {
+      const parent = svgParent.parentElement;
+      if (parent && (parent.tagName === 'BUTTON' || parent.tagName === 'A' || 
+          parent.onclick || parent.getAttribute('role') === 'button')) {
+        return parent;
+      }
+      return svgParent;
+    }
+  }
+  
+  return element;
+}
+
 // Get element selector
 function getElementSelector(element) {
   // Try to get a unique selector
   if (element.id) {
-    return `#${element.id}`;
+    return `#${CSS.escape(element.id)}`;
   }
   
   let path = [];
-  while (element && element.nodeType === Node.ELEMENT_NODE) {
-    let selector = element.nodeName.toLowerCase();
+  let currentElement = element;
+  while (currentElement && currentElement.nodeType === Node.ELEMENT_NODE) {
+    let selector = currentElement.nodeName.toLowerCase();
     
-    if (element.className && typeof element.className === 'string') {
-      const classes = element.className.trim().split(/\s+/)
-        .filter(c => !c.startsWith('spyweb-'));
+    // Handle SVG namespace
+    if (currentElement instanceof SVGElement && currentElement.tagName.toLowerCase() !== 'svg') {
+      selector = currentElement.tagName.toLowerCase();
+    }
+    
+    // Get class names (handle SVGAnimatedString for SVG elements)
+    let classNames = '';
+    if (currentElement.className) {
+      if (typeof currentElement.className === 'string') {
+        classNames = currentElement.className;
+      } else if (currentElement.className.baseVal) {
+        classNames = currentElement.className.baseVal;
+      }
+    }
+    
+    if (classNames) {
+      const classes = classNames.trim().split(/\s+/)
+        .filter(c => c && !c.startsWith('spyweb-'))
+        .map(c => CSS.escape(c));
       if (classes.length > 0) {
         selector += '.' + classes.join('.');
       }
     }
     
-    // Add nth-child if needed for uniqueness
-    let sibling = element;
+    // Add nth-of-type if needed for uniqueness
+    let sibling = currentElement;
     let nth = 1;
     while (sibling = sibling.previousElementSibling) {
-      if (sibling.nodeName.toLowerCase() === element.nodeName.toLowerCase()) {
+      if (sibling.nodeName.toLowerCase() === currentElement.nodeName.toLowerCase()) {
         nth++;
       }
     }
@@ -65,7 +136,7 @@ function getElementSelector(element) {
     }
     
     path.unshift(selector);
-    element = element.parentElement;
+    currentElement = currentElement.parentElement;
     
     // Limit depth
     if (path.length >= 5) break;
@@ -103,8 +174,10 @@ function onMouseMove(e) {
   e.preventDefault();
   e.stopPropagation();
   
-  const element = document.elementFromPoint(e.clientX, e.clientY);
+  let element = document.elementFromPoint(e.clientX, e.clientY);
   if (element && !element.classList.contains('spyweb-highlight-overlay')) {
+    // Get the best maskable element (handles SVG, icons, etc.)
+    element = getBestMaskableElement(element);
     highlightElement(element);
   }
 }
@@ -116,8 +189,10 @@ function onClick(e) {
   e.preventDefault();
   e.stopPropagation();
   
-  const element = e.target;
+  let element = e.target;
   if (element && !element.classList.contains('spyweb-highlight-overlay')) {
+    // Get the best maskable element (handles SVG, icons, etc.)
+    element = getBestMaskableElement(element);
     addMaskedElement(element);
     removeHighlight();
   }
@@ -129,13 +204,38 @@ async function addMaskedElement(element) {
   const rect = element.getBoundingClientRect();
   const domain = window.location.hostname;
   
+  // Capture original styles if using "inherit" mask type
+  let originalStyles = null;
+  if (settings.maskType === 'inherit') {
+    const computedStyle = window.getComputedStyle(element);
+    originalStyles = {
+      fontFamily: computedStyle.fontFamily,
+      fontSize: computedStyle.fontSize,
+      fontWeight: computedStyle.fontWeight,
+      fontStyle: computedStyle.fontStyle,
+      color: computedStyle.color,
+      textAlign: computedStyle.textAlign,
+      letterSpacing: computedStyle.letterSpacing,
+      lineHeight: computedStyle.lineHeight
+    };
+  }
+  
+  // Check if element is SVG or contains icons (optimized check)
+  const isSvgOrIcon = element instanceof SVGElement || 
+                       element.tagName === 'I' ||
+                       (element.tagName === 'BUTTON' && element.firstElementChild?.tagName === 'svg') ||
+                       (element.tagName === 'A' && element.firstElementChild?.tagName === 'svg') ||
+                       (element.tagName === 'SPAN' && element.firstElementChild?.tagName === 'svg');
+  
   const maskedElement = {
     selector,
     domain,
     settings: { ...settings },
     timestamp: Date.now(),
     isInput: element.tagName === 'INPUT' || element.tagName === 'TEXTAREA',
-    scope: settings.maskScope || 'current'
+    isSvgOrIcon,
+    scope: settings.maskScope || 'current',
+    originalStyles
   };
   
   // Load current masked elements
@@ -224,6 +324,37 @@ function applyMaskToElement(element, maskedElement) {
     mask.style.alignItems = 'center';
     mask.style.justifyContent = 'center';
     mask.style.fontSize = '14px';
+  } else if (maskType === 'inherit') {
+    // Use transparent background with inherited styles
+    mask.textContent = maskSettings.maskText || '████████';
+    mask.style.display = 'flex';
+    mask.style.alignItems = 'center';
+    mask.style.justifyContent = 'center';
+    mask.style.backgroundColor = 'transparent';
+    
+    // Apply original styles if captured
+    if (maskedElement.originalStyles) {
+      const styles = maskedElement.originalStyles;
+      mask.style.fontFamily = styles.fontFamily;
+      mask.style.fontSize = styles.fontSize;
+      mask.style.fontWeight = styles.fontWeight;
+      mask.style.fontStyle = styles.fontStyle;
+      mask.style.color = styles.color;
+      mask.style.textAlign = styles.textAlign;
+      mask.style.letterSpacing = styles.letterSpacing;
+      mask.style.lineHeight = styles.lineHeight;
+    } else {
+      // Fallback: inherit styles from the element
+      const computedStyle = window.getComputedStyle(element);
+      mask.style.fontFamily = computedStyle.fontFamily;
+      mask.style.fontSize = computedStyle.fontSize;
+      mask.style.fontWeight = computedStyle.fontWeight;
+      mask.style.fontStyle = computedStyle.fontStyle;
+      mask.style.color = computedStyle.color;
+      mask.style.textAlign = computedStyle.textAlign;
+      mask.style.letterSpacing = computedStyle.letterSpacing;
+      mask.style.lineHeight = computedStyle.lineHeight;
+    }
   } else if (maskType === 'color') {
     mask.style.backgroundColor = maskSettings.maskColor || '#000000';
   } else if (maskType === 'blur') {
@@ -244,6 +375,11 @@ function applyMaskToElement(element, maskedElement) {
     mask.style.pointerEvents = 'none';
     element.style.color = 'transparent';
     element.style.caretColor = 'black';
+  }
+  
+  // For SVG/icon elements, ensure proper masking
+  if (maskedElement.isSvgOrIcon) {
+    mask.style.pointerEvents = 'none';
   }
   
   // Position mask
