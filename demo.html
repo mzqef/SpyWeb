@@ -332,6 +332,23 @@
     </div>
     
     <div class="section">
+      <h2>Video Preview Elements</h2>
+      <p style="margin-bottom: 15px;">Test masking video elements (video previews should be maskable):</p>
+      <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+        <video width="320" height="180" poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='180' viewBox='0 0 320 180'%3E%3Crect fill='%23333' width='320' height='180'/%3E%3Ctext fill='white' font-family='Arial' font-size='16' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3E▶ Video Preview%3C/text%3E%3C/svg%3E" 
+               style="border-radius: 8px; cursor: pointer;">
+          <source src="https://example.com/sample.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <video width="200" height="112" controls
+               poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='112' viewBox='0 0 200 112'%3E%3Crect fill='%23667eea' width='200' height='112'/%3E%3Ctext fill='white' font-family='Arial' font-size='12' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3E▶ Masked Video%3C/text%3E%3C/svg%3E"
+               style="border-radius: 4px;">
+          <source src="https://example.com/sample2.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+    
+    <div class="section">
       <h2>Text with Background Colors</h2>
       <p style="margin-bottom: 15px;">Test the "Inherit Style" mask type on these elements (should preserve background and font):</p>
       <div style="display: flex; gap: 15px; flex-wrap: wrap;">

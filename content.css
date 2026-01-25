@@ -45,6 +45,12 @@ img.spyweb-masked {
   overflow: visible;
 }
 
+/* Video elements with masks */
+video.spyweb-masked {
+  position: relative !important;
+  overflow: visible;
+}
+
 /* Notification */
 .spyweb-notification {
   position: fixed;

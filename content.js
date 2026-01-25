@@ -59,6 +59,11 @@ function getBestMaskableElement(element) {
     return element;
   }
   
+  // For VIDEO elements, always return the video itself as it's maskable
+  if (element.tagName === 'VIDEO') {
+    return element;
+  }
+  
   // For icon elements (i, span with icon classes), get their container
   // Handle both string and SVGAnimatedString className types
   const classNameStr = typeof element.className === 'string' 
@@ -238,6 +243,9 @@ async function addMaskedElement(element) {
   // Check if element is an image (including those with srcset)
   const isImage = element.tagName === 'IMG';
   
+  // Check if element is a video (video previews)
+  const isVideo = element.tagName === 'VIDEO';
+  
   const maskedElement = {
     selector,
     domain,
@@ -246,6 +254,7 @@ async function addMaskedElement(element) {
     isInput: element.tagName === 'INPUT' || element.tagName === 'TEXTAREA',
     isSvgOrIcon,
     isImage,
+    isVideo,
     scope: settings.maskScope || 'current',
     originalStyles
   };
@@ -313,26 +322,28 @@ function applyMasks() {
 
 // Apply mask to a single element
 function applyMaskToElement(element, maskedElement) {
-  // For image elements, we need special handling since we can't append children to <img>
+  // For image and video elements, we need special handling since we can't append children to <img>/<video>
   const isImageElement = element.tagName === 'IMG';
+  const isVideoElement = element.tagName === 'VIDEO';
   
-  if (isImageElement) {
-    // Check if a SpyWeb wrapper already exists for this image
-    let wrapper = element.closest('.spyweb-img-wrapper');
+  if (isImageElement || isVideoElement) {
+    const wrapperClass = isVideoElement ? 'spyweb-video-wrapper' : 'spyweb-img-wrapper';
+    // Check if a SpyWeb wrapper already exists for this element
+    let wrapper = element.closest('.' + wrapperClass);
     if (!wrapper) {
-      // Create a wrapper for the image
+      // Create a wrapper for the element
       wrapper = document.createElement('span');
-      wrapper.className = 'spyweb-img-wrapper';
+      wrapper.className = wrapperClass;
       wrapper.style.display = 'inline-block';
       wrapper.style.position = 'relative';
       
-      // Preserve image positioning
+      // Preserve element positioning
       const computedStyle = window.getComputedStyle(element);
       if (computedStyle.display === 'block') {
         wrapper.style.display = 'block';
       }
       
-      // Insert wrapper before the image and move image into it
+      // Insert wrapper before the element and move element into it
       element.parentNode.insertBefore(wrapper, element);
       wrapper.appendChild(element);
     }
@@ -414,6 +425,7 @@ function createMaskElement(element, maskedElement) {
     mask.style.fontSize = '14px';
   } else if (maskType === 'inherit') {
     // Use inherited styles with original background preserved
+    // The mask must completely hide the original content
     mask.textContent = maskSettings.maskText || '████████';
     mask.style.display = 'flex';
     mask.style.alignItems = 'center';
@@ -422,7 +434,7 @@ function createMaskElement(element, maskedElement) {
     // Apply original styles if captured, otherwise get from computed style
     const styles = maskedElement.originalStyles || {};
     
-    // Preserve background from the original element
+    // Preserve background from the original element - must be opaque to hide content
     const bgColor = styles.backgroundColor || computedStyle.backgroundColor;
     const bgFull = styles.background || computedStyle.background;
     
@@ -432,8 +444,20 @@ function createMaskElement(element, maskedElement) {
     } else if (bgFull && bgFull !== 'none') {
       mask.style.background = bgFull;
     } else {
-      // Fallback: set transparent so the parent's background shows through
-      mask.style.backgroundColor = 'transparent';
+      // Fallback: use a solid background color to ensure content is hidden
+      // Get parent's background or default to white
+      let parentBg = 'white';
+      let parent = element.parentElement;
+      while (parent) {
+        const parentStyle = window.getComputedStyle(parent);
+        const parentBgColor = parentStyle.backgroundColor;
+        if (parentBgColor && parentBgColor !== 'rgba(0, 0, 0, 0)' && parentBgColor !== 'transparent') {
+          parentBg = parentBgColor;
+          break;
+        }
+        parent = parent.parentElement;
+      }
+      mask.style.backgroundColor = parentBg;
     }
     
     // Apply font styles
@@ -453,7 +477,26 @@ function createMaskElement(element, maskedElement) {
       mask.style.boxSizing = 'border-box';
     }
   } else if (maskType === 'color') {
-    mask.style.backgroundColor = maskSettings.maskColor || '#000000';
+    // For solid color mask, use element's background color as default instead of black
+    let defaultColor = computedStyle.backgroundColor;
+    // If transparent or no background, check parent backgrounds
+    if (!defaultColor || defaultColor === 'rgba(0, 0, 0, 0)' || defaultColor === 'transparent') {
+      let parent = element.parentElement;
+      while (parent) {
+        const parentStyle = window.getComputedStyle(parent);
+        const parentBgColor = parentStyle.backgroundColor;
+        if (parentBgColor && parentBgColor !== 'rgba(0, 0, 0, 0)' && parentBgColor !== 'transparent') {
+          defaultColor = parentBgColor;
+          break;
+        }
+        parent = parent.parentElement;
+      }
+      // If still no background found, fallback to a gray color instead of black
+      if (!defaultColor || defaultColor === 'rgba(0, 0, 0, 0)' || defaultColor === 'transparent') {
+        defaultColor = '#808080';
+      }
+    }
+    mask.style.backgroundColor = maskSettings.maskColor || defaultColor;
   } else if (maskType === 'blur') {
     // backdrop-filter can be performance-intensive, use with care
     mask.style.backdropFilter = 'blur(10px)';
@@ -466,7 +509,8 @@ function createMaskElement(element, maskedElement) {
       imgEl.src = maskSettings.maskImage;
       imgEl.style.width = '100%';
       imgEl.style.height = '100%';
-      imgEl.style.objectFit = 'cover';
+      // Use 'contain' to pad the image to fit element size without cropping
+      imgEl.style.objectFit = 'contain';
       imgEl.style.objectPosition = 'center';
       imgEl.onerror = function() {
         // Fallback if image fails to load
@@ -474,7 +518,9 @@ function createMaskElement(element, maskedElement) {
         this.remove();
       };
       mask.appendChild(imgEl);
-      mask.style.backgroundColor = 'transparent';
+      // Set a background color for padding areas when using contain
+      // Use a neutral color that blends with most contexts
+      mask.style.backgroundColor = '#f0f0f0';
     } else {
       // No image URL provided, show placeholder
       applyImageFallbackStyles(mask, 'No image URL');
@@ -544,6 +590,15 @@ async function refreshMasks() {
     const img = wrapper.querySelector('img');
     if (img && wrapper.parentNode) {
       wrapper.parentNode.insertBefore(img, wrapper);
+      wrapper.remove();
+    }
+  });
+  
+  // Unwrap videos from their wrappers
+  document.querySelectorAll('.spyweb-video-wrapper').forEach(wrapper => {
+    const video = wrapper.querySelector('video');
+    if (video && wrapper.parentNode) {
+      wrapper.parentNode.insertBefore(video, wrapper);
       wrapper.remove();
     }
   });
