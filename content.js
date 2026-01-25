@@ -405,6 +405,25 @@ function applyImageFallbackStyles(mask, message) {
   mask.style.color = '#666';
 }
 
+// Get the first non-transparent background color from an element or its ancestors
+// maxDepth limits traversal to prevent performance issues with deeply nested DOMs
+function getInheritedBackgroundColor(element, fallback = 'white', maxDepth = 10) {
+  let current = element;
+  let depth = 0;
+  
+  while (current && depth < maxDepth) {
+    const style = window.getComputedStyle(current);
+    const bgColor = style.backgroundColor;
+    if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+      return bgColor;
+    }
+    current = current.parentElement;
+    depth++;
+  }
+  
+  return fallback;
+}
+
 // Create the mask element with appropriate styling
 function createMaskElement(element, maskedElement) {
   const mask = document.createElement('div');
@@ -445,19 +464,7 @@ function createMaskElement(element, maskedElement) {
       mask.style.background = bgFull;
     } else {
       // Fallback: use a solid background color to ensure content is hidden
-      // Get parent's background or default to white
-      let parentBg = 'white';
-      let parent = element.parentElement;
-      while (parent) {
-        const parentStyle = window.getComputedStyle(parent);
-        const parentBgColor = parentStyle.backgroundColor;
-        if (parentBgColor && parentBgColor !== 'rgba(0, 0, 0, 0)' && parentBgColor !== 'transparent') {
-          parentBg = parentBgColor;
-          break;
-        }
-        parent = parent.parentElement;
-      }
-      mask.style.backgroundColor = parentBg;
+      mask.style.backgroundColor = getInheritedBackgroundColor(element.parentElement, 'white');
     }
     
     // Apply font styles
@@ -479,22 +486,9 @@ function createMaskElement(element, maskedElement) {
   } else if (maskType === 'color') {
     // For solid color mask, use element's background color as default instead of black
     let defaultColor = computedStyle.backgroundColor;
-    // If transparent or no background, check parent backgrounds
+    // If transparent or no background, get inherited background color
     if (!defaultColor || defaultColor === 'rgba(0, 0, 0, 0)' || defaultColor === 'transparent') {
-      let parent = element.parentElement;
-      while (parent) {
-        const parentStyle = window.getComputedStyle(parent);
-        const parentBgColor = parentStyle.backgroundColor;
-        if (parentBgColor && parentBgColor !== 'rgba(0, 0, 0, 0)' && parentBgColor !== 'transparent') {
-          defaultColor = parentBgColor;
-          break;
-        }
-        parent = parent.parentElement;
-      }
-      // If still no background found, fallback to a gray color instead of black
-      if (!defaultColor || defaultColor === 'rgba(0, 0, 0, 0)' || defaultColor === 'transparent') {
-        defaultColor = '#808080';
-      }
+      defaultColor = getInheritedBackgroundColor(element.parentElement, '#808080');
     }
     mask.style.backgroundColor = maskSettings.maskColor || defaultColor;
   } else if (maskType === 'blur') {
