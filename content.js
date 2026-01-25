@@ -55,9 +55,14 @@ function getBestMaskableElement(element) {
   }
   
   // For icon elements (i, span with icon classes), get their container
+  // Handle both string and SVGAnimatedString className types
+  const classNameStr = typeof element.className === 'string' 
+    ? element.className 
+    : (element.className?.baseVal || '');
+  
   if (element.tagName === 'I' || (element.tagName === 'SPAN' && 
-      (element.className.includes('icon') || element.className.includes('fa-') || 
-       element.className.includes('material-icons') || element.className.includes('glyphicon')))) {
+      (classNameStr.includes('icon') || classNameStr.includes('fa-') || 
+       classNameStr.includes('material-icons') || classNameStr.includes('glyphicon')))) {
     const parent = element.parentElement;
     if (parent && (parent.tagName === 'BUTTON' || parent.tagName === 'A' || 
         parent.onclick || parent.getAttribute('role') === 'button')) {
@@ -215,15 +220,20 @@ async function addMaskedElement(element) {
     };
   }
   
+  // Check if element is SVG or contains icons (optimized check)
+  const isSvgOrIcon = element instanceof SVGElement || 
+                       element.tagName === 'I' ||
+                       (element.tagName === 'BUTTON' && element.firstElementChild?.tagName === 'svg') ||
+                       (element.tagName === 'A' && element.firstElementChild?.tagName === 'svg') ||
+                       (element.tagName === 'SPAN' && element.firstElementChild?.tagName === 'svg');
+  
   const maskedElement = {
     selector,
     domain,
     settings: { ...settings },
     timestamp: Date.now(),
     isInput: element.tagName === 'INPUT' || element.tagName === 'TEXTAREA',
-    isSvgOrIcon: element instanceof SVGElement || 
-                  element.tagName === 'I' || 
-                  (element.querySelector && element.querySelector('svg, i')),
+    isSvgOrIcon,
     scope: settings.maskScope || 'current',
     originalStyles
   };

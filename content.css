@@ -25,11 +25,6 @@
   overflow: hidden;
 }
 
-/* Transparent mask variant for inherit style */
-.spyweb-mask.spyweb-mask-inherit {
-  background-color: transparent;
-}
-
 /* Input elements with masks should still be interactive */
 input.spyweb-masked,
 textarea.spyweb-masked {
