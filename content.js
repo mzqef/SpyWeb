@@ -32,7 +32,7 @@ function createOverlay() {
   document.body.appendChild(overlay);
 }
 
-// Get the best element for masking (handle SVG, icons, etc.)
+// Get the best element for masking (handle SVG, icons, images, etc.)
 function getBestMaskableElement(element) {
   // For SVG elements, try to find the parent clickable/interactive element
   if (element instanceof SVGElement) {
@@ -52,6 +52,11 @@ function getBestMaskableElement(element) {
       }
       current = current.parentElement;
     }
+  }
+  
+  // For IMG elements, always return the image itself as it's maskable
+  if (element.tagName === 'IMG') {
+    return element;
   }
   
   // For icon elements (i, span with icon classes), get their container
@@ -216,7 +221,10 @@ async function addMaskedElement(element) {
       color: computedStyle.color,
       textAlign: computedStyle.textAlign,
       letterSpacing: computedStyle.letterSpacing,
-      lineHeight: computedStyle.lineHeight
+      lineHeight: computedStyle.lineHeight,
+      backgroundColor: computedStyle.backgroundColor,
+      background: computedStyle.background,
+      padding: computedStyle.padding
     };
   }
   
@@ -227,6 +235,9 @@ async function addMaskedElement(element) {
                        (element.tagName === 'A' && element.firstElementChild?.tagName === 'svg') ||
                        (element.tagName === 'SPAN' && element.firstElementChild?.tagName === 'svg');
   
+  // Check if element is an image (including those with srcset)
+  const isImage = element.tagName === 'IMG';
+  
   const maskedElement = {
     selector,
     domain,
@@ -234,6 +245,7 @@ async function addMaskedElement(element) {
     timestamp: Date.now(),
     isInput: element.tagName === 'INPUT' || element.tagName === 'TEXTAREA',
     isSvgOrIcon,
+    isImage,
     scope: settings.maskScope || 'current',
     originalStyles
   };
@@ -301,22 +313,98 @@ function applyMasks() {
 
 // Apply mask to a single element
 function applyMaskToElement(element, maskedElement) {
-  // Remove existing mask if any
-  const existingMask = element.querySelector('.spyweb-mask');
-  if (existingMask) {
-    existingMask.remove();
+  // For image elements, we need special handling since we can't append children to <img>
+  const isImageElement = element.tagName === 'IMG';
+  
+  if (isImageElement) {
+    // Check if a SpyWeb wrapper already exists for this image
+    let wrapper = element.closest('.spyweb-img-wrapper');
+    if (!wrapper) {
+      // Create a wrapper for the image
+      wrapper = document.createElement('span');
+      wrapper.className = 'spyweb-img-wrapper';
+      wrapper.style.display = 'inline-block';
+      wrapper.style.position = 'relative';
+      
+      // Preserve image positioning
+      const computedStyle = window.getComputedStyle(element);
+      if (computedStyle.display === 'block') {
+        wrapper.style.display = 'block';
+      }
+      
+      // Insert wrapper before the image and move image into it
+      element.parentNode.insertBefore(wrapper, element);
+      wrapper.appendChild(element);
+    }
+    
+    // Remove existing mask if any
+    const existingMask = wrapper.querySelector('.spyweb-mask');
+    if (existingMask) {
+      existingMask.remove();
+    }
+    
+    // Mark element as masked
+    element.classList.add('spyweb-masked');
+    
+    // Create mask overlay
+    const mask = createMaskElement(element, maskedElement);
+    mask.style.pointerEvents = 'none';
+    
+    // Append mask to wrapper
+    wrapper.appendChild(mask);
+  } else {
+    // Remove existing mask if any
+    const existingMask = element.querySelector('.spyweb-mask');
+    if (existingMask) {
+      existingMask.remove();
+    }
+    
+    // Mark element as masked
+    element.classList.add('spyweb-masked');
+    
+    // Create mask overlay
+    const mask = createMaskElement(element, maskedElement);
+    
+    // For input elements, allow interaction
+    if (maskedElement.isInput) {
+      mask.style.pointerEvents = 'none';
+      element.style.color = 'transparent';
+      element.style.caretColor = 'black';
+    }
+    
+    // For SVG/icon elements, ensure proper masking
+    if (maskedElement.isSvgOrIcon) {
+      mask.style.pointerEvents = 'none';
+    }
+    
+    // Position mask
+    element.style.position = 'relative';
+    element.appendChild(mask);
   }
-  
-  // Mark element as masked
-  element.classList.add('spyweb-masked');
-  
-  // Create mask overlay
+}
+
+// Apply fallback styling when image fails or is unavailable
+function applyImageFallbackStyles(mask, message) {
+  mask.style.backgroundColor = '#cccccc';
+  mask.textContent = message;
+  mask.style.display = 'flex';
+  mask.style.alignItems = 'center';
+  mask.style.justifyContent = 'center';
+  mask.style.fontSize = '12px';
+  mask.style.color = '#666';
+}
+
+// Create the mask element with appropriate styling
+function createMaskElement(element, maskedElement) {
   const mask = document.createElement('div');
   mask.className = 'spyweb-mask';
   
   // Apply mask style based on settings
   const maskSettings = maskedElement.settings || {};
   const maskType = maskSettings.maskType || 'text';
+  
+  // Get computed styles for inherit mode or background preservation
+  const computedStyle = window.getComputedStyle(element);
   
   if (maskType === 'text') {
     mask.textContent = maskSettings.maskText || '████████';
@@ -325,35 +413,44 @@ function applyMaskToElement(element, maskedElement) {
     mask.style.justifyContent = 'center';
     mask.style.fontSize = '14px';
   } else if (maskType === 'inherit') {
-    // Use transparent background with inherited styles
+    // Use inherited styles with original background preserved
     mask.textContent = maskSettings.maskText || '████████';
     mask.style.display = 'flex';
     mask.style.alignItems = 'center';
     mask.style.justifyContent = 'center';
-    mask.style.backgroundColor = 'transparent';
     
-    // Apply original styles if captured
-    if (maskedElement.originalStyles) {
-      const styles = maskedElement.originalStyles;
-      mask.style.fontFamily = styles.fontFamily;
-      mask.style.fontSize = styles.fontSize;
-      mask.style.fontWeight = styles.fontWeight;
-      mask.style.fontStyle = styles.fontStyle;
-      mask.style.color = styles.color;
-      mask.style.textAlign = styles.textAlign;
-      mask.style.letterSpacing = styles.letterSpacing;
-      mask.style.lineHeight = styles.lineHeight;
+    // Apply original styles if captured, otherwise get from computed style
+    const styles = maskedElement.originalStyles || {};
+    
+    // Preserve background from the original element
+    const bgColor = styles.backgroundColor || computedStyle.backgroundColor;
+    const bgFull = styles.background || computedStyle.background;
+    
+    // If the element has a non-transparent background, use it
+    if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+      mask.style.backgroundColor = bgColor;
+    } else if (bgFull && bgFull !== 'none') {
+      mask.style.background = bgFull;
     } else {
-      // Fallback: inherit styles from the element
-      const computedStyle = window.getComputedStyle(element);
-      mask.style.fontFamily = computedStyle.fontFamily;
-      mask.style.fontSize = computedStyle.fontSize;
-      mask.style.fontWeight = computedStyle.fontWeight;
-      mask.style.fontStyle = computedStyle.fontStyle;
-      mask.style.color = computedStyle.color;
-      mask.style.textAlign = computedStyle.textAlign;
-      mask.style.letterSpacing = computedStyle.letterSpacing;
-      mask.style.lineHeight = computedStyle.lineHeight;
+      // Fallback: set transparent so the parent's background shows through
+      mask.style.backgroundColor = 'transparent';
+    }
+    
+    // Apply font styles
+    mask.style.fontFamily = styles.fontFamily || computedStyle.fontFamily;
+    mask.style.fontSize = styles.fontSize || computedStyle.fontSize;
+    mask.style.fontWeight = styles.fontWeight || computedStyle.fontWeight;
+    mask.style.fontStyle = styles.fontStyle || computedStyle.fontStyle;
+    mask.style.color = styles.color || computedStyle.color;
+    mask.style.textAlign = styles.textAlign || computedStyle.textAlign;
+    mask.style.letterSpacing = styles.letterSpacing || computedStyle.letterSpacing;
+    mask.style.lineHeight = styles.lineHeight || computedStyle.lineHeight;
+    
+    // Apply padding to match original element's layout
+    const padding = styles.padding || computedStyle.padding;
+    if (padding && padding !== '0px') {
+      mask.style.padding = padding;
+      mask.style.boxSizing = 'border-box';
     }
   } else if (maskType === 'color') {
     mask.style.backgroundColor = maskSettings.maskColor || '#000000';
@@ -364,27 +461,27 @@ function applyMaskToElement(element, maskedElement) {
     mask.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
   } else if (maskType === 'image') {
     if (maskSettings.maskImage) {
-      mask.style.backgroundImage = `url(${maskSettings.maskImage})`;
-      mask.style.backgroundSize = 'cover';
-      mask.style.backgroundPosition = 'center';
+      // Create an img element to better handle the image (including CORS issues)
+      const imgEl = document.createElement('img');
+      imgEl.src = maskSettings.maskImage;
+      imgEl.style.width = '100%';
+      imgEl.style.height = '100%';
+      imgEl.style.objectFit = 'cover';
+      imgEl.style.objectPosition = 'center';
+      imgEl.onerror = function() {
+        // Fallback if image fails to load
+        applyImageFallbackStyles(mask, '⚠️ Image unavailable');
+        this.remove();
+      };
+      mask.appendChild(imgEl);
+      mask.style.backgroundColor = 'transparent';
+    } else {
+      // No image URL provided, show placeholder
+      applyImageFallbackStyles(mask, 'No image URL');
     }
   }
   
-  // For input elements, allow interaction
-  if (maskedElement.isInput) {
-    mask.style.pointerEvents = 'none';
-    element.style.color = 'transparent';
-    element.style.caretColor = 'black';
-  }
-  
-  // For SVG/icon elements, ensure proper masking
-  if (maskedElement.isSvgOrIcon) {
-    mask.style.pointerEvents = 'none';
-  }
-  
-  // Position mask
-  element.style.position = 'relative';
-  element.appendChild(mask);
+  return mask;
 }
 
 // Show notification
@@ -439,6 +536,15 @@ async function refreshMasks() {
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
       el.style.color = '';
       el.style.caretColor = '';
+    }
+  });
+  
+  // Unwrap images from their wrappers
+  document.querySelectorAll('.spyweb-img-wrapper').forEach(wrapper => {
+    const img = wrapper.querySelector('img');
+    if (img && wrapper.parentNode) {
+      wrapper.parentNode.insertBefore(img, wrapper);
+      wrapper.remove();
     }
   });
   

@@ -305,6 +305,42 @@
         </span>
       </div>
     </div>
+    
+    <div class="section">
+      <h2>Image Elements</h2>
+      <p style="margin-bottom: 15px;">Test masking image elements (including those with srcset attributes):</p>
+      <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='60' viewBox='0 0 150 60'%3E%3Crect fill='%234A90D9' width='150' height='60'/%3E%3Ctext fill='white' font-family='Arial' font-size='14' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3ECompany Logo%3C/text%3E%3C/svg%3E" 
+             alt="Company Logo" 
+             width="150" 
+             height="60" 
+             style="border-radius: 4px;">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Crect fill='%23667eea' width='80' height='80' rx='40'/%3E%3Ctext fill='white' font-family='Arial' font-size='28' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3EJD%3C/text%3E%3C/svg%3E" 
+             alt="Profile Avatar" 
+             width="80" 
+             height="80" 
+             class="h-10 w-auto" 
+             style="color: transparent; position: relative; border-radius: 50%;">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='40' viewBox='0 0 180 40'%3E%3Crect fill='%23FF5722' width='180' height='40'/%3E%3Ctext fill='white' font-family='Arial' font-size='12' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3EDeepLearning.AI%3C/text%3E%3C/svg%3E" 
+             alt="DeepLearning.AI" 
+             width="180" 
+             height="40" 
+             decoding="async" 
+             data-nimg="1" 
+             style="color: transparent; position: relative;">
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>Text with Background Colors</h2>
+      <p style="margin-bottom: 15px;">Test the "Inherit Style" mask type on these elements (should preserve background and font):</p>
+      <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+        <span style="background-color: #ff69b4; color: white; padding: 8px 12px; border-radius: 4px; font-family: Georgia, serif; font-size: 18px;">Hello Pink</span>
+        <span style="background-color: #32cd32; color: white; padding: 8px 12px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold;">Secret Code</span>
+        <span style="background: linear-gradient(45deg, #667eea, #764ba2); color: white; padding: 10px 15px; border-radius: 4px; font-family: Arial; font-size: 14px;">Gradient Background</span>
+        <div style="background-color: #ffd700; color: #333; padding: 12px; border-radius: 8px; font-family: 'Times New Roman', serif; font-size: 20px; font-style: italic;">Important Note</div>
+      </div>
+    </div>
   </div>
 </body>
 </html>
