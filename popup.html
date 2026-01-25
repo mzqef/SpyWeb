@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpyWeb - Mask Elements</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>SpyWeb</h1>
+    <p class="subtitle">Mask sensitive information on web pages</p>
+    
+    <div class="section">
+      <h2>Element Selection</h2>
+      <button id="inspectBtn" class="btn btn-primary">
+        <span id="inspectBtnText">Start Inspection</span>
+      </button>
+      <p class="help-text">Click to start selecting elements to mask</p>
+    </div>
+
+    <div class="section">
+      <h2>Mask Appearance</h2>
+      <div class="input-group">
+        <label>
+          <input type="radio" name="maskType" value="text" checked>
+          Custom Text
+        </label>
+        <input type="text" id="maskText" placeholder="Enter mask text" value="████████">
+      </div>
+      <div class="input-group">
+        <label>
+          <input type="radio" name="maskType" value="color">
+          Solid Color
+        </label>
+        <input type="color" id="maskColor" value="#000000">
+      </div>
+      <div class="input-group">
+        <label>
+          <input type="radio" name="maskType" value="blur">
+          Blur Effect
+        </label>
+      </div>
+      <div class="input-group">
+        <label>
+          <input type="radio" name="maskType" value="image">
+          Custom Image URL
+        </label>
+        <input type="text" id="maskImage" placeholder="Enter image URL">
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Mask Scope</h2>
+      <div class="input-group">
+        <label>
+          <input type="radio" name="maskScope" value="current" checked>
+          Current Website Only
+        </label>
+      </div>
+      <div class="input-group">
+        <label>
+          <input type="radio" name="maskScope" value="all">
+          All Websites
+        </label>
+      </div>
+    </div>
+
+    <div class="section">
+      <button id="viewMasked" class="btn btn-secondary">View Masked Elements</button>
+      <button id="clearAll" class="btn btn-danger">Clear All Masks</button>
+    </div>
+
+    <div class="status" id="status"></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

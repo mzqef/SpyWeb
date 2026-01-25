@@ -1,0 +1,54 @@
+/* Content script styles for SpyWeb */
+
+/* Highlight overlay for element selection */
+#spyweb-highlight-overlay {
+  position: absolute;
+  z-index: 2147483647;
+  pointer-events: none;
+  border: 2px solid #007bff;
+  background-color: rgba(0, 123, 255, 0.1);
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.3);
+  transition: all 0.1s ease;
+}
+
+/* Mask overlay */
+.spyweb-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background-color: #000;
+  color: #fff;
+  pointer-events: all;
+}
+
+/* Input elements with masks should still be interactive */
+input.spyweb-masked,
+textarea.spyweb-masked {
+  position: relative;
+}
+
+/* Notification */
+.spyweb-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #333;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 2147483646;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 14px;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+}
+
+.spyweb-notification.show {
+  opacity: 1;
+  transform: translateY(0);
+}
