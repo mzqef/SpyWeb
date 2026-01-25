@@ -39,6 +39,12 @@ a.spyweb-masked {
   overflow: hidden;
 }
 
+/* Image elements with masks */
+img.spyweb-masked {
+  position: relative !important;
+  overflow: visible;
+}
+
 /* Notification */
 .spyweb-notification {
   position: fixed;
