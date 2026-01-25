@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SpyWeb",
   "version": "1.0.0",
-  "description": "Mask off sensitive information on your screen",
+  "description": "Mask sensitive information on your screen",
   "permissions": [
     "storage",
     "activeTab",

@@ -154,7 +154,9 @@ async function clearAllMasks() {
   // Notify all tabs
   const tabs = await chrome.tabs.query({});
   tabs.forEach(tab => {
-    chrome.tabs.sendMessage(tab.id, { action: 'refreshMasks' }).catch(() => {});
+    chrome.tabs.sendMessage(tab.id, { action: 'refreshMasks' }).catch(() => {
+      // Ignore errors for tabs without content script loaded
+    });
   });
   
   showStatus('All masks cleared', 'success');

@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tabs[0]) {
     chrome.tabs.sendMessage(tabs[0].id, { action: 'getInspectionState' }, (response) => {
+      if (chrome.runtime.lastError) {
+        // Content script not loaded yet, ignore
+        return;
+      }
       if (response && response.inspecting) {
         updateInspectButton(true);
       }
@@ -142,7 +146,11 @@ clearAllBtn.addEventListener('click', async () => {
       
       // Notify content script to refresh
       chrome.tabs.sendMessage(tabs[0].id, { action: 'refreshMasks' }, (response) => {
-        if (!chrome.runtime.lastError) {
+        if (chrome.runtime.lastError) {
+          // Content script not loaded, ignore
+          return;
+        }
+        if (response) {
           showStatus('All masks cleared for this site', 'success');
         }
       });

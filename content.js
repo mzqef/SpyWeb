@@ -227,7 +227,9 @@ function applyMaskToElement(element, maskedElement) {
   } else if (maskType === 'color') {
     mask.style.backgroundColor = maskSettings.maskColor || '#000000';
   } else if (maskType === 'blur') {
+    // backdrop-filter can be performance-intensive, use with care
     mask.style.backdropFilter = 'blur(10px)';
+    mask.style.webkitBackdropFilter = 'blur(10px)'; // Safari support
     mask.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
   } else if (maskType === 'image') {
     if (maskSettings.maskImage) {
