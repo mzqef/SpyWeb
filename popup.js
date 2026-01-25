@@ -170,8 +170,12 @@ async function saveAndBroadcastSettings() {
       chrome.tabs.sendMessage(tabs[0].id, {
         action: 'updateSettings',
         settings
-      }).catch(() => {
-        // Content script not loaded, ignore
+      }).catch((error) => {
+        // Expected error when content script not loaded (e.g., on chrome:// pages)
+        // Other errors are silently ignored as they don't affect core functionality
+        if (error.message && !error.message.includes('Receiving end does not exist')) {
+          console.debug('SpyWeb: Could not update settings on tab:', error.message);
+        }
       });
     }
   }

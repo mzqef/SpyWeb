@@ -410,6 +410,7 @@ function hideOriginalContent(element) {
   Array.from(element.childNodes).forEach(child => {
     if (child.nodeType === Node.TEXT_NODE) {
       // For text nodes, wrap in a span and hide
+      // Whitespace-only nodes are skipped as they're not visually significant
       if (child.textContent.trim()) {
         const span = document.createElement('span');
         span.className = 'spyweb-hidden-content';
@@ -647,7 +648,7 @@ async function refreshMasks() {
   applyMasks();
 }
 
-// Listen for messages from popup
+// Listen for messages from popup and background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'startInspection') {
     startInspection(request.settings);
@@ -662,12 +663,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ success: true });
   } else if (request.action === 'updateSettings') {
     // Update settings immediately during inspection (Issue 3)
+    // Sent by popup.js when user changes settings while inspecting
     if (inspecting && request.settings) {
       settings = request.settings;
     }
     sendResponse({ success: true });
   } else if (request.action === 'settingsUpdated') {
-    // Handle settings updated from storage sync
+    // Handle settings updated from background.js storage sync
+    // Sent by background.js when storage changes (syncs settings across tabs)
     if (request.settings) {
       settings = request.settings;
     }
