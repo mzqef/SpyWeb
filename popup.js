@@ -28,8 +28,8 @@ async function getTargetTabId() {
     return targetTabId;
   }
   
-  // Otherwise, get the active tab in the last focused window (not our popup window)
-  const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  // Query for active tab in a normal browser window (excludes popup windows)
+  const tabs = await chrome.tabs.query({ active: true, windowType: 'normal' });
   
   // Filter out extension pages
   const webTab = tabs.find(tab => tab.url && !tab.url.startsWith('chrome-extension://'));
@@ -38,7 +38,7 @@ async function getTargetTabId() {
   }
   
   // Fallback: get all tabs and find a non-extension one
-  const allTabs = await chrome.tabs.query({});
+  const allTabs = await chrome.tabs.query({ windowType: 'normal' });
   const fallbackTab = allTabs.find(tab => tab.url && !tab.url.startsWith('chrome-extension://') && !tab.url.startsWith('chrome://'));
   return fallbackTab ? fallbackTab.id : null;
 }
@@ -187,7 +187,14 @@ clearAllBtn.addEventListener('click', async () => {
   if (confirm('Are you sure you want to clear all masked elements?')) {
     const tabId = await getTargetTabId();
     if (tabId) {
-      const tab = await chrome.tabs.get(tabId);
+      let tab;
+      try {
+        tab = await chrome.tabs.get(tabId);
+      } catch (error) {
+        showStatus('Error: Could not access page. Tab may have been closed.', 'error');
+        return;
+      }
+      
       const url = new URL(tab.url);
       const domain = url.hostname;
       
