@@ -158,11 +158,34 @@ clearAllBtn.addEventListener('click', async () => {
   }
 });
 
+// Save settings and broadcast to content script if inspecting
+async function saveAndBroadcastSettings() {
+  const settings = getCurrentSettings();
+  await chrome.storage.sync.set({ maskSettings: settings });
+  
+  // Broadcast settings change to content script if inspecting (Issue 3)
+  if (inspecting) {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tabs[0]) {
+      chrome.tabs.sendMessage(tabs[0].id, {
+        action: 'updateSettings',
+        settings
+      }).catch((error) => {
+        // Expected error when content script not loaded (e.g., on chrome:// pages)
+        // Other errors are silently ignored as they don't affect core functionality
+        if (error.message && !error.message.includes('Receiving end does not exist')) {
+          console.debug('SpyWeb: Could not update settings on tab:', error.message);
+        }
+      });
+    }
+  }
+}
+
 // Save settings when changed
 document.querySelectorAll('input[name="maskType"], input[name="maskScope"]').forEach(input => {
-  input.addEventListener('change', saveSettings);
+  input.addEventListener('change', saveAndBroadcastSettings);
 });
 
 [maskTextInput, maskColorInput, maskImageInput].forEach(input => {
-  input.addEventListener('input', saveSettings);
+  input.addEventListener('input', saveAndBroadcastSettings);
 });
