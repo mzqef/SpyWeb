@@ -1,5 +1,8 @@
 // Background service worker for SpyWeb extension
 
+// Track the floating panel window ID for always-on-top behavior
+let floatingPanelWindowId = null;
+
 // Initialize storage with default settings
 chrome.runtime.onInstalled.addListener(async () => {
   const defaultSettings = {
@@ -42,6 +45,40 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ success: true });
     });
     return true;
+  }
+  
+  // Handle floating panel window registration for always-on-top behavior
+  if (request.action === 'registerFloatingPanel') {
+    floatingPanelWindowId = request.windowId;
+    sendResponse({ success: true });
+    return true;
+  }
+});
+
+// Keep floating panel always on top when other windows are focused
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  // If a floating panel is registered and another window gains focus,
+  // bring the floating panel back to focus (always-on-top behavior)
+  if (floatingPanelWindowId !== null && 
+      windowId !== chrome.windows.WINDOW_ID_NONE && 
+      windowId !== floatingPanelWindowId) {
+    // Check if the floating panel window still exists
+    chrome.windows.get(floatingPanelWindowId, (window) => {
+      if (chrome.runtime.lastError) {
+        // Window no longer exists, clear the ID
+        floatingPanelWindowId = null;
+        return;
+      }
+      // Bring the floating panel to front
+      chrome.windows.update(floatingPanelWindowId, { focused: true });
+    });
+  }
+});
+
+// Clean up when the floating panel window is removed
+chrome.windows.onRemoved.addListener((windowId) => {
+  if (windowId === floatingPanelWindowId) {
+    floatingPanelWindowId = null;
   }
 });
 

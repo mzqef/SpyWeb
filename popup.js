@@ -29,6 +29,11 @@ const maskImageFileInput = document.getElementById('maskImageFile');
 const uploadImageBtn = document.getElementById('uploadImageBtn');
 const uploadedFileName = document.getElementById('uploadedFileName');
 
+// Modal elements
+const confirmModal = document.getElementById('confirmModal');
+const confirmCancelBtn = document.getElementById('confirmCancel');
+const confirmOkBtn = document.getElementById('confirmOk');
+
 // Check if we're running in a popup window (detect via URL parameter)
 const urlParams = new URLSearchParams(window.location.search);
 const isFloatingPanel = urlParams.get('floating') === 'true';
@@ -61,6 +66,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Hide popout button if we're already in a floating panel
   if (isFloatingPanel && popoutBtn) {
     popoutBtn.style.display = 'none';
+    
+    // Register this floating panel window for always-on-top behavior
+    const currentWindow = await chrome.windows.getCurrent();
+    chrome.runtime.sendMessage({
+      action: 'registerFloatingPanel',
+      windowId: currentWindow.id
+    });
+    // Note: Cleanup when window closes is handled by chrome.windows.onRemoved in background.js
   }
   
   // Load saved settings (sync storage for regular settings)
@@ -251,42 +264,69 @@ viewMaskedBtn.addEventListener('click', () => {
   chrome.runtime.openOptionsPage();
 });
 
-// Clear all masks button
-clearAllBtn.addEventListener('click', async () => {
-  if (confirm('Are you sure you want to clear all masked elements?')) {
-    const tabId = await getTargetTabId();
-    if (tabId) {
-      let tab;
-      try {
-        tab = await chrome.tabs.get(tabId);
-      } catch (error) {
-        showStatus('Error: Could not access page. Tab may have been closed.', 'error');
+// Show custom confirmation modal
+function showConfirmModal() {
+  confirmModal.style.display = 'flex';
+}
+
+// Hide custom confirmation modal
+function hideConfirmModal() {
+  confirmModal.style.display = 'none';
+}
+
+// Clear all masks button - shows custom modal
+clearAllBtn.addEventListener('click', () => {
+  showConfirmModal();
+});
+
+// Handle modal cancel button
+confirmCancelBtn.addEventListener('click', () => {
+  hideConfirmModal();
+});
+
+// Handle modal confirm button
+confirmOkBtn.addEventListener('click', async () => {
+  hideConfirmModal();
+  
+  const tabId = await getTargetTabId();
+  if (tabId) {
+    let tab;
+    try {
+      tab = await chrome.tabs.get(tabId);
+    } catch (error) {
+      showStatus('Error: Could not access page. Tab may have been closed.', 'error');
+      return;
+    }
+    
+    const url = new URL(tab.url);
+    const domain = url.hostname;
+    
+    // Get all masked elements
+    const data = await chrome.storage.local.get(['maskedElements']);
+    const maskedElements = data.maskedElements || {};
+    
+    // Clear for current domain
+    delete maskedElements[domain];
+    
+    await chrome.storage.local.set({ maskedElements });
+    
+    // Notify content script to refresh
+    chrome.tabs.sendMessage(tabId, { action: 'refreshMasks' }, (response) => {
+      if (chrome.runtime.lastError) {
+        // Content script not loaded, ignore
         return;
       }
-      
-      const url = new URL(tab.url);
-      const domain = url.hostname;
-      
-      // Get all masked elements
-      const data = await chrome.storage.local.get(['maskedElements']);
-      const maskedElements = data.maskedElements || {};
-      
-      // Clear for current domain
-      delete maskedElements[domain];
-      
-      await chrome.storage.local.set({ maskedElements });
-      
-      // Notify content script to refresh
-      chrome.tabs.sendMessage(tabId, { action: 'refreshMasks' }, (response) => {
-        if (chrome.runtime.lastError) {
-          // Content script not loaded, ignore
-          return;
-        }
-        if (response) {
-          showStatus('All masks cleared for this site', 'success');
-        }
-      });
-    }
+      if (response) {
+        showStatus('All masks cleared for this site', 'success');
+      }
+    });
+  }
+});
+
+// Close modal when clicking outside the modal content
+confirmModal.addEventListener('click', (event) => {
+  if (event.target === confirmModal) {
+    hideConfirmModal();
   }
 });
 
@@ -379,7 +419,7 @@ popoutBtn.addEventListener('click', async () => {
   // Get the current target tab ID to pass to the floating panel
   const tabId = await getTargetTabId();
   
-  // Create a new popup window
+  // Create a new popup window that stays on top
   chrome.windows.create({
     url: chrome.runtime.getURL(`popup.html?floating=true&tabId=${tabId}`),
     type: 'popup',
@@ -389,6 +429,7 @@ popoutBtn.addEventListener('click', async () => {
     left: currentWindow.left + currentWindow.width - 400,
     focused: true
   }, (newWindow) => {
+    // The popup window will be created with focus
     // Close the current popup
     window.close();
   });
