@@ -257,21 +257,20 @@ async function saveAndBroadcastSettings() {
   const settings = getCurrentSettings();
   await chrome.storage.sync.set({ maskSettings: settings });
   
-  // Broadcast settings change to content script if inspecting (Issue 3)
-  if (inspecting) {
-    const tabId = await getTargetTabId();
-    if (tabId) {
-      chrome.tabs.sendMessage(tabId, {
-        action: 'updateSettings',
-        settings
-      }).catch((error) => {
-        // Expected error when content script not loaded (e.g., on chrome:// pages)
-        // Other errors are silently ignored as they don't affect core functionality
-        if (error.message && !error.message.includes('Receiving end does not exist')) {
-          console.debug('SpyWeb: Could not update settings on tab:', error.message);
-        }
-      });
-    }
+  // Always broadcast settings change to content script
+  // This ensures content script has latest settings even if popup's inspecting state is out of sync
+  const tabId = await getTargetTabId();
+  if (tabId) {
+    chrome.tabs.sendMessage(tabId, {
+      action: 'updateSettings',
+      settings
+    }).catch((error) => {
+      // Expected error when content script not loaded (e.g., on chrome:// pages)
+      // Other errors are silently ignored as they don't affect core functionality
+      if (error.message && !error.message.includes('Receiving end does not exist')) {
+        console.debug('SpyWeb: Could not update settings on tab:', error.message);
+      }
+    });
   }
 }
 
@@ -372,6 +371,9 @@ maskImageFileInput.addEventListener('change', async (event) => {
     
     // Set the data URL as the mask image
     maskImageInput.value = dataUrl;
+    
+    // Automatically select the "image" mask type when uploading a local image
+    document.querySelector('input[name="maskType"][value="image"]').checked = true;
     
     // Show uploaded file name
     uploadedFileName.textContent = `✓ ${file.name}`;
