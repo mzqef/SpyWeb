@@ -167,6 +167,11 @@ h1 {
   line-height: 1.4;
 }
 
+.help-text-inline {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
 .input-group {
   margin-bottom: 12px;
 }
