@@ -254,3 +254,41 @@ h1 {
   font-size: 12px;
   color: #888;
 }
+
+/* Image upload styles */
+.image-upload-row {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.or-text {
+  font-size: 12px;
+  color: #888;
+}
+
+.btn-upload {
+  padding: 6px 10px;
+  font-size: 12px;
+  background-color: #17a2b8;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-upload:hover {
+  background-color: #138496;
+}
+
+.uploaded-file-name {
+  font-size: 11px;
+  color: #28a745;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

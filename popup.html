@@ -87,9 +87,15 @@
       <div class="input-group">
         <label>
           <input type="radio" name="maskType" value="image">
-          Custom Image URL
+          Custom Image
         </label>
         <input type="text" id="maskImage" placeholder="Enter image URL">
+        <div class="image-upload-row">
+          <span class="or-text">or</span>
+          <input type="file" id="maskImageFile" accept="image/*" style="display: none;">
+          <button type="button" id="uploadImageBtn" class="btn btn-upload">📁 Upload Local Image</button>
+          <span id="uploadedFileName" class="uploaded-file-name"></span>
+        </div>
       </div>
     </div>
 

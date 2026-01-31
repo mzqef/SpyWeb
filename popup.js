@@ -2,6 +2,9 @@
 
 let inspecting = false;
 
+// Constants
+const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB max for uploaded images
+
 // Get DOM elements
 const inspectBtn = document.getElementById('inspectBtn');
 const inspectBtnText = document.getElementById('inspectBtnText');
@@ -20,6 +23,11 @@ const popoutBtn = document.getElementById('popoutBtn');
 const textMaskColorInput = document.getElementById('textMaskColor');
 const textMaskFontSelect = document.getElementById('textMaskFont');
 const textMaskSizeInput = document.getElementById('textMaskSize');
+
+// Image upload elements
+const maskImageFileInput = document.getElementById('maskImageFile');
+const uploadImageBtn = document.getElementById('uploadImageBtn');
+const uploadedFileName = document.getElementById('uploadedFileName');
 
 // Check if we're running in a popup window (detect via URL parameter)
 const urlParams = new URLSearchParams(window.location.search);
@@ -89,6 +97,10 @@ function applySettings(settings) {
   }
   if (settings.maskImage) {
     maskImageInput.value = settings.maskImage;
+    // Show indicator if it's a data URL (uploaded image)
+    if (settings.maskImage.startsWith('data:')) {
+      uploadedFileName.textContent = '✓ Local image loaded';
+    }
   }
   if (settings.maskScope) {
     document.querySelector(`input[name="maskScope"][value="${settings.maskScope}"]`).checked = true;
@@ -330,4 +342,63 @@ popoutBtn.addEventListener('click', async () => {
     // Close the current popup
     window.close();
   });
+});
+
+// Upload image button handler - triggers file input
+uploadImageBtn.addEventListener('click', () => {
+  maskImageFileInput.click();
+});
+
+// File input change handler - converts uploaded image to data URL
+maskImageFileInput.addEventListener('change', async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    showStatus('Please select an image file', 'error');
+    return;
+  }
+  
+  // Validate file size to avoid storage issues
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    showStatus('Image too large. Max size: 2MB', 'error');
+    return;
+  }
+  
+  try {
+    // Convert to data URL
+    const dataUrl = await readFileAsDataURL(file);
+    
+    // Set the data URL as the mask image
+    maskImageInput.value = dataUrl;
+    
+    // Show uploaded file name
+    uploadedFileName.textContent = `✓ ${file.name}`;
+    
+    // Save settings
+    await saveAndBroadcastSettings();
+    
+    showStatus('Image uploaded successfully', 'success');
+  } catch (error) {
+    showStatus(`Error reading image: ${error.message || 'Unknown error'}`, 'error');
+  }
+});
+
+// Helper function to read file as data URL
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Clear uploaded file name when URL input changes
+maskImageInput.addEventListener('input', () => {
+  // Clear uploaded file indicator if user types a URL manually
+  if (!maskImageInput.value.startsWith('data:')) {
+    uploadedFileName.textContent = '';
+  }
 });
