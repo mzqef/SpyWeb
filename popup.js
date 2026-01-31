@@ -16,6 +16,11 @@ const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
 const popoutBtn = document.getElementById('popoutBtn');
 
+// New text styling elements
+const textMaskColorInput = document.getElementById('textMaskColor');
+const textMaskFontSelect = document.getElementById('textMaskFont');
+const textMaskSizeInput = document.getElementById('textMaskSize');
+
 // Check if we're running in a popup window (detect via URL parameter)
 const urlParams = new URLSearchParams(window.location.search);
 const isFloatingPanel = urlParams.get('floating') === 'true';
@@ -88,6 +93,16 @@ function applySettings(settings) {
   if (settings.maskScope) {
     document.querySelector(`input[name="maskScope"][value="${settings.maskScope}"]`).checked = true;
   }
+  // Apply new text styling settings
+  if (settings.textMaskColor) {
+    textMaskColorInput.value = settings.textMaskColor;
+  }
+  if (settings.textMaskFont) {
+    textMaskFontSelect.value = settings.textMaskFont;
+  }
+  if (settings.textMaskSize) {
+    textMaskSizeInput.value = settings.textMaskSize;
+  }
 }
 
 // Get current settings
@@ -100,7 +115,11 @@ function getCurrentSettings() {
     maskText: maskTextInput.value,
     maskColor: maskColorInput.value,
     maskImage: maskImageInput.value,
-    maskScope
+    maskScope,
+    // New text styling settings
+    textMaskColor: textMaskColorInput.value,
+    textMaskFont: textMaskFontSelect.value,
+    textMaskSize: textMaskSizeInput.value
   };
 }
 
@@ -249,9 +268,12 @@ document.querySelectorAll('input[name="maskType"], input[name="maskScope"]').for
   input.addEventListener('change', saveAndBroadcastSettings);
 });
 
-[maskTextInput, maskColorInput, maskImageInput].forEach(input => {
+[maskTextInput, maskColorInput, maskImageInput, textMaskColorInput, textMaskSizeInput].forEach(input => {
   input.addEventListener('input', saveAndBroadcastSettings);
 });
+
+// Font select needs 'change' event
+textMaskFontSelect.addEventListener('change', saveAndBroadcastSettings);
 
 // Undo button handler
 undoBtn.addEventListener('click', async () => {
