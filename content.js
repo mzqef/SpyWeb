@@ -656,22 +656,75 @@ function createMaskElement(element, maskedElement) {
     mask.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
   } else if (maskType === 'image') {
     if (maskSettings.maskImage) {
-      // Create an img element to better handle the image (including CORS issues)
+      // Use a container for proper tiling/overflow handling
+      const imgContainer = document.createElement('div');
+      imgContainer.style.width = '100%';
+      imgContainer.style.height = '100%';
+      imgContainer.style.overflow = 'hidden';
+      imgContainer.style.position = 'relative';
+      
+      // Create an img element to load and measure the image
       const imgEl = document.createElement('img');
       imgEl.src = maskSettings.maskImage;
-      imgEl.style.width = '100%';
-      imgEl.style.height = '100%';
-      // Use 'contain' to pad the image to fit element size without cropping
-      imgEl.style.objectFit = 'contain';
-      imgEl.style.objectPosition = 'center';
+      
+      imgEl.onload = function() {
+        // Verify container is still in the DOM before proceeding
+        if (!imgContainer.isConnected) {
+          return;
+        }
+        
+        // Get element dimensions at load time for accurate calculations
+        const elementRect = element.getBoundingClientRect();
+        const elementWidth = elementRect.width;
+        const elementHeight = elementRect.height;
+        
+        // Calculate scaled dimensions to match element width
+        const imgNaturalWidth = imgEl.naturalWidth;
+        const imgNaturalHeight = imgEl.naturalHeight;
+        
+        if (imgNaturalWidth > 0 && imgNaturalHeight > 0 && elementWidth > 0 && elementHeight > 0) {
+          // Scale image to element width while maintaining aspect ratio
+          const scaledHeight = (elementWidth / imgNaturalWidth) * imgNaturalHeight;
+          
+          // Clear existing content before adding styled images
+          imgContainer.innerHTML = '';
+          
+          // Check if we need to tile the image vertically
+          if (scaledHeight < elementHeight) {
+            // Need to repeat image vertically to cover element height
+            const tilesNeeded = Math.ceil(elementHeight / scaledHeight);
+            
+            for (let i = 0; i < tilesNeeded; i++) {
+              const tileImg = document.createElement('img');
+              tileImg.src = maskSettings.maskImage;
+              tileImg.style.width = '100%';
+              tileImg.style.height = scaledHeight + 'px';
+              tileImg.style.display = 'block';
+              tileImg.style.objectFit = 'fill';
+              imgContainer.appendChild(tileImg);
+            }
+          } else {
+            // Scaled image is tall enough, just scale to width
+            const singleImg = document.createElement('img');
+            singleImg.src = maskSettings.maskImage;
+            singleImg.style.width = '100%';
+            singleImg.style.height = 'auto';
+            singleImg.style.display = 'block';
+            imgContainer.appendChild(singleImg);
+          }
+        }
+      };
+      
       imgEl.onerror = function() {
         // Fallback if image fails to load
         applyImageFallbackStyles(mask, '⚠️ Image unavailable');
-        this.remove();
+        imgContainer.remove();
       };
-      mask.appendChild(imgEl);
-      // Set a background color for padding areas when using contain
-      // Use a neutral color that blends with most contexts
+      
+      // Append initial image for loading (will be replaced in onload)
+      imgContainer.appendChild(imgEl);
+      mask.appendChild(imgContainer);
+      // Set a background color for any gaps
       mask.style.backgroundColor = '#f0f0f0';
     } else {
       // No image URL provided, show placeholder

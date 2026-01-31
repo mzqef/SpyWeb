@@ -358,6 +358,31 @@
         <div style="background-color: #ffd700; color: #333; padding: 12px; border-radius: 8px; font-family: 'Times New Roman', serif; font-size: 20px; font-style: italic;">Important Note</div>
       </div>
     </div>
+    
+    <div class="section">
+      <h2>Image Mask Tiling Test</h2>
+      <p style="margin-bottom: 15px;">Test image mask tiling: When an image mask is smaller than the element, it should be tiled to cover the entire element (e.g., a 100x400 image covering a 100x1000 element should show ~3 tiles):</p>
+      <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start;">
+        <!-- Tall element to test image tiling (100x500) -->
+        <div id="tall-element-test" style="width: 100px; height: 500px; background: linear-gradient(180deg, #e0e0e0 0%, #b0b0b0 100%); border: 2px solid #666; border-radius: 4px; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; text-orientation: mixed; color: #555; font-size: 14px;">
+          Tall Element (100x500) - Test Image Tiling
+        </div>
+        <!-- Wide element to test horizontal scaling (300x80) -->
+        <div id="wide-element-test" style="width: 300px; height: 80px; background: linear-gradient(90deg, #d0e0f0 0%, #a0c0e0 100%); border: 2px solid #4A90D9; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #333; font-size: 14px;">
+          Wide Element (300x80) - Test Image Scaling
+        </div>
+        <!-- Very tall narrow element (60x600) -->
+        <div id="narrow-tall-test" style="width: 60px; height: 600px; background: repeating-linear-gradient(0deg, #f0f0f0, #f0f0f0 20px, #e0e0e0 20px, #e0e0e0 40px); border: 2px dashed #999; border-radius: 4px; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; color: #666; font-size: 12px;">
+          Narrow Tall (60x600)
+        </div>
+      </div>
+      <p style="margin-top: 15px; font-size: 12px; color: #666;">
+        <strong>Expected behavior:</strong> When using "Image" mask type with an image that doesn't match the element's aspect ratio:
+        <br>1. Image is scaled to match element width
+        <br>2. If scaled height &lt; element height, image is repeated/tiled vertically to fill
+        <br>3. Overflow is hidden to maintain element boundaries
+      </p>
+    </div>
   </div>
 </body>
 </html>
