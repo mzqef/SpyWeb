@@ -910,7 +910,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           if (localData.maskImageLocal) {
             settings.maskImage = localData.maskImageLocal;
           }
+          sendResponse({ success: true });
         });
+        return true; // Keep channel open for async response
       }
     }
     sendResponse({ success: true });

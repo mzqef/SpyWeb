@@ -149,16 +149,25 @@ function getCurrentSettings() {
   };
 }
 
+// Handle local image storage - stores data URLs in local storage (larger quota)
+// and clears local storage when switching to URL-based images
+async function handleLocalImageStorage(maskImageValue) {
+  if (maskImageValue.startsWith('data:')) {
+    // Store local image in local storage (larger quota)
+    await chrome.storage.local.set({ maskImageLocal: maskImageValue });
+  } else {
+    // Clear local image when switching to URL or clearing the input
+    await chrome.storage.local.remove(['maskImageLocal']);
+  }
+}
+
 // Save settings
 async function saveSettings() {
   const settings = getCurrentSettings();
   const maskImageValue = maskImageInput.value;
   
   // Handle local image storage separately
-  if (maskImageValue.startsWith('data:')) {
-    // Store local image in local storage (larger quota)
-    await chrome.storage.local.set({ maskImageLocal: maskImageValue });
-  }
+  await handleLocalImageStorage(maskImageValue);
   
   // Save settings to sync storage (without the large data URL)
   await chrome.storage.sync.set({ maskSettings: settings });
@@ -287,13 +296,7 @@ async function saveAndBroadcastSettings() {
   const maskImageValue = maskImageInput.value;
   
   // Handle local image storage separately
-  if (maskImageValue.startsWith('data:')) {
-    // Store local image in local storage (larger quota)
-    await chrome.storage.local.set({ maskImageLocal: maskImageValue });
-  } else if (!settings.useLocalImage) {
-    // Clear local image if switching to URL
-    await chrome.storage.local.remove(['maskImageLocal']);
-  }
+  await handleLocalImageStorage(maskImageValue);
   
   // Save settings to sync storage (without the large data URL)
   await chrome.storage.sync.set({ maskSettings: settings });
@@ -449,11 +452,10 @@ function readFileAsDataURL(file) {
 }
 
 // Clear uploaded file name when URL input changes
-maskImageInput.addEventListener('input', async () => {
+maskImageInput.addEventListener('input', () => {
   // Clear uploaded file indicator if user types a URL manually
   if (!maskImageInput.value.startsWith('data:')) {
     uploadedFileName.textContent = '';
-    // Clear local image from storage when switching to URL
-    await chrome.storage.local.remove(['maskImageLocal']);
   }
+  // Note: Local image storage is handled by handleLocalImageStorage() in saveAndBroadcastSettings()
 });
