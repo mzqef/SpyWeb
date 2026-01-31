@@ -8,6 +8,9 @@ let maskedElements = [];
 let earlyCssStyleElement = null;
 let maskPortalContainer = null;
 
+// Counter for generating unique mask IDs
+let maskIdCounter = 0;
+
 // Undo/Redo state management
 let undoStack = [];
 let redoStack = [];
@@ -145,14 +148,18 @@ function createMaskPortalContainer() {
     document.body.appendChild(maskPortalContainer);
   } else {
     // Wait for body if not available yet
+    let attempts = 0;
+    const maxAttempts = 500; // 5 seconds at 10ms intervals
     const waitForBody = setInterval(() => {
+      attempts++;
       if (document.body) {
         clearInterval(waitForBody);
         document.body.appendChild(maskPortalContainer);
+      } else if (attempts >= maxAttempts) {
+        clearInterval(waitForBody);
+        console.warn('SpyWeb: Failed to create mask portal container - document.body not available');
       }
     }, 10);
-    // Safety timeout
-    setTimeout(() => clearInterval(waitForBody), 5000);
   }
 }
 
@@ -502,7 +509,9 @@ function applyMasks() {
 // Apply mask to a single element
 function applyMaskToElement(element, maskedElement) {
   // Generate a unique ID for this masked element to link in-place and portal masks
-  const maskId = 'spyweb-mask-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  // Using counter + timestamp for guaranteed uniqueness across rapid mask creation
+  maskIdCounter++;
+  const maskId = 'spyweb-mask-' + maskIdCounter + '-' + Date.now();
   
   // For image and video elements, we need special handling since we can't append children to <img>/<video>
   const isImageElement = element.tagName === 'IMG';
@@ -634,24 +643,33 @@ function updatePortalMaskPosition(portalMask, element) {
 
 // Set up position tracking for portal masks (handles scroll and resize)
 function setupPortalMaskPositionTracking(portalMask, element) {
-  // Use a single RAF-based update function
+  // Track pending RAF to prevent multiple simultaneous updates
+  let rafPending = false;
+  
+  // Use a single RAF-based update function with debouncing
   const updatePosition = () => {
+    rafPending = false;
     if (!portalMask.isConnected || !element.isConnected) {
       return; // Stop if either is removed from DOM
     }
     updatePortalMaskPosition(portalMask, element);
   };
   
-  // Listen for scroll and resize events
-  const scrollHandler = () => requestAnimationFrame(updatePosition);
-  const resizeHandler = () => requestAnimationFrame(updatePosition);
+  // Debounced handler that only queues one RAF at a time
+  const scheduleUpdate = () => {
+    if (!rafPending) {
+      rafPending = true;
+      requestAnimationFrame(updatePosition);
+    }
+  };
   
-  window.addEventListener('scroll', scrollHandler, { passive: true });
-  window.addEventListener('resize', resizeHandler, { passive: true });
+  // Listen for scroll and resize events
+  window.addEventListener('scroll', scheduleUpdate, { passive: true });
+  window.addEventListener('resize', scheduleUpdate, { passive: true });
   
   // Store handlers for cleanup
-  portalMask._scrollHandler = scrollHandler;
-  portalMask._resizeHandler = resizeHandler;
+  portalMask._scrollHandler = scheduleUpdate;
+  portalMask._resizeHandler = scheduleUpdate;
 }
 
 // Remove portal mask by ID
