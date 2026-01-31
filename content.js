@@ -5,13 +5,102 @@ let highlightedElement = null;
 let overlay = null;
 let settings = {};
 let maskedElements = [];
+let earlyCssStyleElement = null;
 
 // Undo/Redo state management
 let undoStack = [];
 let redoStack = [];
 
-// Initialize
-init();
+// Apply early CSS hiding immediately (before DOM is fully loaded)
+// This ensures masked elements are hidden from the start
+applyEarlyCssHiding();
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+// Inject CSS rules to hide masked elements before the page renders
+async function applyEarlyCssHiding() {
+  try {
+    const domain = window.location.hostname;
+    const data = await chrome.storage.local.get(['maskedElements']);
+    const allMasked = data.maskedElements || {};
+    
+    // Collect selectors to hide early
+    const selectorsToHide = [];
+    
+    // Add domain-specific masks
+    if (allMasked[domain]) {
+      allMasked[domain].forEach(m => {
+        if (m.selector) {
+          selectorsToHide.push(m.selector);
+        }
+      });
+    }
+    
+    // Add global masks (scope: 'all')
+    Object.keys(allMasked).forEach(d => {
+      if (d !== domain) {
+        const globalMasks = allMasked[d].filter(m => m.scope === 'all');
+        globalMasks.forEach(m => {
+          if (m.selector) {
+            selectorsToHide.push(m.selector);
+          }
+        });
+      }
+    });
+    
+    if (selectorsToHide.length > 0) {
+      // Create a style element to inject early hiding rules
+      earlyCssStyleElement = document.createElement('style');
+      earlyCssStyleElement.id = 'spyweb-early-hide';
+      
+      // Build CSS rules to hide elements immediately
+      // Use visibility:hidden to preserve layout, with opacity:0 as fallback
+      const cssRules = selectorsToHide.map(selector => {
+        // Basic validation: selector should not be empty and should not contain dangerous characters
+        // More thorough validation happens when the CSS is applied by the browser
+        if (!selector || selector.includes('{') || selector.includes('}')) {
+          return '';
+        }
+        return `${selector} { visibility: hidden !important; opacity: 0 !important; }`;
+      }).filter(rule => rule).join('\n');
+      
+      earlyCssStyleElement.textContent = cssRules;
+      
+      // Insert at the earliest possible point
+      if (document.head) {
+        document.head.appendChild(earlyCssStyleElement);
+      } else if (document.documentElement) {
+        document.documentElement.appendChild(earlyCssStyleElement);
+      } else {
+        // Wait for documentElement to be available
+        const checkInterval = setInterval(() => {
+          if (document.documentElement) {
+            clearInterval(checkInterval);
+            document.documentElement.appendChild(earlyCssStyleElement);
+          }
+        }, 10);
+        // Safety timeout to avoid infinite loop
+        setTimeout(() => clearInterval(checkInterval), 5000);
+      }
+    }
+  } catch (e) {
+    // Silently fail if storage access fails during early loading
+    console.debug('SpyWeb: Early CSS hiding failed', e);
+  }
+}
+
+// Remove early CSS hiding rules (called after proper masks are applied)
+function removeEarlyCssHiding() {
+  if (earlyCssStyleElement) {
+    earlyCssStyleElement.remove();
+    earlyCssStyleElement = null;
+  }
+}
 
 async function init() {
   // Load settings
@@ -23,6 +112,9 @@ async function init() {
   // Load and apply masked elements
   await loadMaskedElements();
   applyMasks();
+  
+  // Remove early CSS hiding now that proper masks are applied
+  removeEarlyCssHiding();
   
   // Create overlay for highlighting
   createOverlay();
@@ -481,7 +573,22 @@ function createMaskElement(element, maskedElement) {
     mask.style.display = 'flex';
     mask.style.alignItems = 'center';
     mask.style.justifyContent = 'center';
-    mask.style.fontSize = '14px';
+    
+    // Apply custom text styling if provided
+    if (maskSettings.textMaskSize) {
+      mask.style.fontSize = maskSettings.textMaskSize + 'px';
+    } else {
+      mask.style.fontSize = '14px';
+    }
+    
+    if (maskSettings.textMaskColor) {
+      mask.style.color = maskSettings.textMaskColor;
+    }
+    
+    if (maskSettings.textMaskFont) {
+      mask.style.fontFamily = maskSettings.textMaskFont;
+    }
+    
     // Set an opaque background to fully hide original content
     // Use inherited background color from the element's context
     mask.style.backgroundColor = getInheritedBackgroundColor(element, 'white');

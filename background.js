@@ -7,7 +7,11 @@ chrome.runtime.onInstalled.addListener(async () => {
     maskText: '████████',
     maskColor: '#000000',
     maskImage: '',
-    maskScope: 'current'
+    maskScope: 'current',
+    // New text styling settings
+    textMaskColor: '#000000',
+    textMaskFont: '',
+    textMaskSize: ''
   };
   
   const data = await chrome.storage.sync.get(['maskSettings']);

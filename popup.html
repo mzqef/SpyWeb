@@ -38,6 +38,31 @@
           Custom Text
         </label>
         <input type="text" id="maskText" placeholder="Enter mask text" value="████████">
+        <div class="text-style-options" id="textStyleOptions">
+          <div class="style-row">
+            <label for="textMaskColor">Color:</label>
+            <input type="color" id="textMaskColor" value="#000000">
+          </div>
+          <div class="style-row">
+            <label for="textMaskFont">Font:</label>
+            <select id="textMaskFont">
+              <option value="">Default</option>
+              <option value="Arial, sans-serif">Arial</option>
+              <option value="Helvetica, sans-serif">Helvetica</option>
+              <option value="Times New Roman, serif">Times New Roman</option>
+              <option value="Georgia, serif">Georgia</option>
+              <option value="Courier New, monospace">Courier New</option>
+              <option value="Verdana, sans-serif">Verdana</option>
+              <option value="Trebuchet MS, sans-serif">Trebuchet MS</option>
+              <option value="Impact, sans-serif">Impact</option>
+            </select>
+          </div>
+          <div class="style-row">
+            <label for="textMaskSize">Size:</label>
+            <input type="number" id="textMaskSize" min="8" max="72" value="" placeholder="Auto" aria-label="Text mask font size in pixels">
+            <span class="unit">px</span>
+          </div>
+        </div>
       </div>
       <div class="input-group">
         <label>
@@ -62,9 +87,15 @@
       <div class="input-group">
         <label>
           <input type="radio" name="maskType" value="image">
-          Custom Image URL
+          Custom Image
         </label>
         <input type="text" id="maskImage" placeholder="Enter image URL">
+        <div class="image-upload-row">
+          <span class="or-text">or</span>
+          <input type="file" id="maskImageFile" accept="image/*" style="display: none;">
+          <button type="button" id="uploadImageBtn" class="btn btn-upload">📁 Upload Local Image</button>
+          <span id="uploadedFileName" class="uploaded-file-name"></span>
+        </div>
       </div>
     </div>
 
