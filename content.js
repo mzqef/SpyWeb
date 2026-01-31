@@ -885,9 +885,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     refreshMasks();
     sendResponse({ success: true });
   } else if (request.action === 'updateSettings') {
-    // Update settings immediately during inspection (Issue 3)
-    // Sent by popup.js when user changes settings while inspecting
-    if (inspecting && request.settings) {
+    // Update settings immediately when changed from popup
+    // Always update settings regardless of inspection state to ensure latest settings are used
+    if (request.settings) {
       settings = request.settings;
     }
     sendResponse({ success: true });
