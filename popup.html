@@ -8,11 +8,13 @@
 </head>
 <body>
   <div class="container">
-    <h1>SpyWeb</h1>
-    <p class="subtitle">Mask sensitive information on web pages</p>
+    <div class="header-section">
+      <h1>🔒 SpyWeb</h1>
+      <p class="subtitle">Mask sensitive information on web pages</p>
+    </div>
     
     <div class="section">
-      <h2>Element Selection</h2>
+      <h2>🎯 Element Selection</h2>
       <button id="inspectBtn" class="btn btn-primary">
         <span id="inspectBtnText">Start Inspection</span>
       </button>
@@ -31,7 +33,7 @@
     </div>
 
     <div class="section">
-      <h2>Mask Appearance</h2>
+      <h2>🎨 Mask Appearance</h2>
       <div class="input-group">
         <label>
           <input type="radio" name="maskType" value="text" checked>
@@ -69,7 +71,7 @@
           <input type="radio" name="maskType" value="inherit">
           Inherit Style (Transparent)
         </label>
-        <p class="help-text" style="margin-top: 2px; margin-bottom: 0;">Uses mask text with original font, size, and color</p>
+        <p class="help-text" style="margin-top: 4px; margin-bottom: 0;">Uses mask text with original font, size, and color</p>
       </div>
       <div class="input-group">
         <label>
@@ -100,7 +102,7 @@
     </div>
 
     <div class="section">
-      <h2>Mask Scope</h2>
+      <h2>🌐 Mask Scope</h2>
       <div class="input-group">
         <label>
           <input type="radio" name="maskScope" value="current" checked>
@@ -116,8 +118,8 @@
     </div>
 
     <div class="section">
-      <button id="viewMasked" class="btn btn-secondary">View Masked Elements</button>
-      <button id="clearAll" class="btn btn-danger">Clear All Masks</button>
+      <button id="viewMasked" class="btn btn-secondary">📋 View Masked Elements</button>
+      <button id="clearAll" class="btn btn-danger">🗑️ Clear All Masks</button>
     </div>
 
     <div class="status" id="status"></div>
