@@ -61,15 +61,12 @@ async function applyEarlyCssHiding() {
       // Build CSS rules to hide elements immediately
       // Use visibility:hidden to preserve layout, with opacity:0 as fallback
       const cssRules = selectorsToHide.map(selector => {
-        // Escape selector for use in CSS (it may already be escaped, but we validate it)
-        try {
-          // Test if selector is valid by parsing it
-          document.querySelector(selector);
-          return `${selector} { visibility: hidden !important; opacity: 0 !important; }`;
-        } catch (e) {
-          // Invalid selector, skip it
+        // Basic validation: selector should not be empty and should not contain dangerous characters
+        // More thorough validation happens when the CSS is applied by the browser
+        if (!selector || selector.includes('{') || selector.includes('}')) {
           return '';
         }
+        return `${selector} { visibility: hidden !important; opacity: 0 !important; }`;
       }).filter(rule => rule).join('\n');
       
       earlyCssStyleElement.textContent = cssRules;
@@ -80,14 +77,15 @@ async function applyEarlyCssHiding() {
       } else if (document.documentElement) {
         document.documentElement.appendChild(earlyCssStyleElement);
       } else {
-        // Wait for head to be available
-        const observer = new MutationObserver((mutations, obs) => {
-          if (document.head) {
-            document.head.appendChild(earlyCssStyleElement);
-            obs.disconnect();
+        // Wait for documentElement to be available
+        const checkInterval = setInterval(() => {
+          if (document.documentElement) {
+            clearInterval(checkInterval);
+            document.documentElement.appendChild(earlyCssStyleElement);
           }
-        });
-        observer.observe(document.documentElement || document, { childList: true, subtree: true });
+        }, 10);
+        // Safety timeout to avoid infinite loop
+        setTimeout(() => clearInterval(checkInterval), 5000);
       }
     }
   } catch (e) {
