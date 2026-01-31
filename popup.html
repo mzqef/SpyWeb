@@ -16,6 +16,17 @@
       <button id="inspectBtn" class="btn btn-primary">
         <span id="inspectBtnText">Start Inspection</span>
       </button>
+      <div class="undo-redo-container" id="undoRedoContainer" style="display: none;">
+        <button id="undoBtn" class="btn btn-undo" title="Undo (Ctrl+Z)" disabled>
+          ↶ Undo
+        </button>
+        <button id="redoBtn" class="btn btn-redo" title="Redo (Ctrl+Y)" disabled>
+          ↷ Redo
+        </button>
+      </div>
+      <button id="popoutBtn" class="btn btn-popout" title="Open in floating window that stays on top">
+        ⧉ Open Floating Panel
+      </button>
       <p class="help-text">Click to start selecting elements to mask</p>
     </div>
 

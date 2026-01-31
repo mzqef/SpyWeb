@@ -84,6 +84,45 @@ h1 {
   background-color: #c82333;
 }
 
+.undo-redo-container {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.btn-undo,
+.btn-redo {
+  flex: 1;
+  padding: 8px;
+  font-size: 13px;
+  background-color: #17a2b8;
+  color: white;
+}
+
+.btn-undo:hover:not(:disabled),
+.btn-redo:hover:not(:disabled) {
+  background-color: #138496;
+}
+
+.btn-undo:disabled,
+.btn-redo:disabled {
+  background-color: #adb5bd;
+  cursor: not-allowed;
+}
+
+.btn-popout {
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px;
+  font-size: 12px;
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-popout:hover {
+  background-color: #5a6268;
+}
+
 .help-text {
   font-size: 11px;
   color: #888;

@@ -6,6 +6,10 @@ let overlay = null;
 let settings = {};
 let maskedElements = [];
 
+// Undo/Redo state management
+let undoStack = [];
+let redoStack = [];
+
 // Initialize
 init();
 
@@ -272,6 +276,10 @@ async function addMaskedElement(element) {
   if (!exists) {
     allMasked[domain].push(maskedElement);
     await chrome.storage.local.set({ maskedElements: allMasked });
+    
+    // Push to undo stack for undo/redo functionality
+    undoStack.push({ action: 'add', element: maskedElement, domain });
+    redoStack = []; // Clear redo stack on new action
     
     // Apply mask immediately
     maskedElements = allMasked[domain] || [];
@@ -585,9 +593,10 @@ function startInspection(newSettings) {
   
   document.addEventListener('mousemove', onMouseMove, true);
   document.addEventListener('click', onClick, true);
+  document.addEventListener('keydown', onKeyDown, true);
   document.body.style.cursor = 'crosshair';
   
-  showNotification('Inspection mode active - Click elements to mask');
+  showNotification('Inspection mode active - Click elements to mask (Ctrl+Z to undo)');
 }
 
 // Stop inspection mode
@@ -596,6 +605,7 @@ function stopInspection() {
   
   document.removeEventListener('mousemove', onMouseMove, true);
   document.removeEventListener('click', onClick, true);
+  document.removeEventListener('keydown', onKeyDown, true);
   document.body.style.cursor = '';
   
   removeHighlight();
@@ -648,6 +658,112 @@ async function refreshMasks() {
   applyMasks();
 }
 
+// Undo the last mask operation
+async function undoMask() {
+  if (undoStack.length === 0) {
+    showNotification('Nothing to undo');
+    return { success: false, canUndo: false, canRedo: redoStack.length > 0 };
+  }
+  
+  const lastAction = undoStack.pop();
+  const domain = lastAction.domain;
+  
+  // Load current masked elements
+  const data = await chrome.storage.local.get(['maskedElements']);
+  const allMasked = data.maskedElements || {};
+  
+  if (lastAction.action === 'add') {
+    // Undo an add action: remove the element
+    if (allMasked[domain]) {
+      const index = allMasked[domain].findIndex(m => m.selector === lastAction.element.selector);
+      if (index !== -1) {
+        allMasked[domain].splice(index, 1);
+        await chrome.storage.local.set({ maskedElements: allMasked });
+        
+        // Push to redo stack
+        redoStack.push(lastAction);
+        
+        // Refresh the masks on page
+        await refreshMasks();
+        
+        showNotification('Undo: Mask removed');
+        return { success: true, canUndo: undoStack.length > 0, canRedo: true };
+      }
+    }
+  }
+  
+  return { success: false, canUndo: undoStack.length > 0, canRedo: redoStack.length > 0 };
+}
+
+// Redo the last undone operation
+async function redoMask() {
+  if (redoStack.length === 0) {
+    showNotification('Nothing to redo');
+    return { success: false, canUndo: undoStack.length > 0, canRedo: false };
+  }
+  
+  const lastUndone = redoStack.pop();
+  const domain = lastUndone.domain;
+  
+  // Load current masked elements
+  const data = await chrome.storage.local.get(['maskedElements']);
+  const allMasked = data.maskedElements || {};
+  
+  if (lastUndone.action === 'add') {
+    // Redo an add action: re-add the element
+    if (!allMasked[domain]) {
+      allMasked[domain] = [];
+    }
+    
+    // Check if already exists (shouldn't happen, but just in case)
+    const exists = allMasked[domain].some(m => m.selector === lastUndone.element.selector);
+    if (!exists) {
+      allMasked[domain].push(lastUndone.element);
+      await chrome.storage.local.set({ maskedElements: allMasked });
+      
+      // Push back to undo stack
+      undoStack.push(lastUndone);
+      
+      // Refresh the masks on page
+      await refreshMasks();
+      
+      showNotification('Redo: Mask restored');
+      return { success: true, canUndo: true, canRedo: redoStack.length > 0 };
+    }
+  }
+  
+  return { success: false, canUndo: undoStack.length > 0, canRedo: redoStack.length > 0 };
+}
+
+// Get current undo/redo state
+function getUndoRedoState() {
+  return {
+    canUndo: undoStack.length > 0,
+    canRedo: redoStack.length > 0
+  };
+}
+
+// Keyboard handler for undo/redo shortcuts during inspection
+function onKeyDown(e) {
+  if (!inspecting) return;
+  
+  // Ctrl+Z or Cmd+Z for undo
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
+    e.preventDefault();
+    e.stopPropagation();
+    undoMask();
+    return;
+  }
+  
+  // Ctrl+Y or Cmd+Y or Ctrl+Shift+Z or Cmd+Shift+Z for redo
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
+    e.preventDefault();
+    e.stopPropagation();
+    redoMask();
+    return;
+  }
+}
+
 // Listen for messages from popup and background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'startInspection') {
@@ -675,6 +791,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       settings = request.settings;
     }
     sendResponse({ success: true });
+  } else if (request.action === 'undo') {
+    // Handle undo request from popup
+    undoMask().then(result => sendResponse(result));
+    return true; // Keep channel open for async response
+  } else if (request.action === 'redo') {
+    // Handle redo request from popup
+    redoMask().then(result => sendResponse(result));
+    return true; // Keep channel open for async response
+  } else if (request.action === 'getUndoRedoState') {
+    // Get current undo/redo availability state
+    sendResponse(getUndoRedoState());
   }
   
   return true;
