@@ -11,17 +11,38 @@
   transition: all 0.1s ease;
 }
 
-/* Mask overlay */
+/* Mask overlay (in-place mask inside element) */
 .spyweb-mask {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 1000;
+  z-index: 2147483646;
   background-color: #000;
   color: #fff;
   pointer-events: all;
+  overflow: hidden;
+}
+
+/* Portal mask container (fixed at body level for guaranteed z-index) */
+.spyweb-mask-portal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  z-index: 2147483646;
+  pointer-events: none;
+}
+
+/* Portal mask overlay (positioned absolutely relative to viewport) */
+.spyweb-mask-portal-overlay {
+  position: fixed;
+  z-index: 2147483646;
+  background-color: #000;
+  color: #fff;
+  pointer-events: none;
   overflow: hidden;
 }
 
