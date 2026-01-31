@@ -6,6 +6,10 @@ let overlay = null;
 let settings = {};
 let maskedElements = [];
 let earlyCssStyleElement = null;
+let maskPortalContainer = null;
+
+// Counter for generating unique mask IDs
+let maskIdCounter = 0;
 
 // Undo/Redo state management
 let undoStack = [];
@@ -117,6 +121,9 @@ async function init() {
     }
   }
   
+  // Create the portal container for top-level masks
+  createMaskPortalContainer();
+  
   // Load and apply masked elements
   await loadMaskedElements();
   applyMasks();
@@ -126,6 +133,34 @@ async function init() {
   
   // Create overlay for highlighting
   createOverlay();
+}
+
+// Create the portal container for masks that need to be on top of everything
+function createMaskPortalContainer() {
+  if (maskPortalContainer) return;
+  
+  maskPortalContainer = document.createElement('div');
+  maskPortalContainer.id = 'spyweb-mask-portal';
+  maskPortalContainer.className = 'spyweb-mask-portal';
+  
+  // Insert at the end of body to ensure highest stacking context
+  if (document.body) {
+    document.body.appendChild(maskPortalContainer);
+  } else {
+    // Wait for body if not available yet
+    let attempts = 0;
+    const maxAttempts = 500; // 5 seconds at 10ms intervals
+    const waitForBody = setInterval(() => {
+      attempts++;
+      if (document.body) {
+        clearInterval(waitForBody);
+        document.body.appendChild(maskPortalContainer);
+      } else if (attempts >= maxAttempts) {
+        clearInterval(waitForBody);
+        console.warn('SpyWeb: Failed to create mask portal container - document.body not available');
+      }
+    }, 10);
+  }
 }
 
 // Create highlight overlay
@@ -403,6 +438,8 @@ async function addMaskedElement(element) {
     // Remove existing mask first, then apply new one
     const existingMask = element.querySelector('.spyweb-mask');
     if (existingMask) {
+      // Also remove the corresponding portal mask
+      removePortalMaskById(existingMask.getAttribute('data-mask-id'));
       existingMask.remove();
     }
     
@@ -413,9 +450,17 @@ async function addMaskedElement(element) {
       if (wrapper) {
         const wrapperMask = wrapper.querySelector('.spyweb-mask');
         if (wrapperMask) {
+          // Also remove the corresponding portal mask
+          removePortalMaskById(wrapperMask.getAttribute('data-mask-id'));
           wrapperMask.remove();
         }
       }
+    }
+    
+    // Also try to remove portal mask by element's data-mask-id attribute
+    const elementMaskId = element.getAttribute('data-mask-id');
+    if (elementMaskId) {
+      removePortalMaskById(elementMaskId);
     }
     
     applyMaskToElement(element, maskedElement);
@@ -463,6 +508,11 @@ function applyMasks() {
 
 // Apply mask to a single element
 function applyMaskToElement(element, maskedElement) {
+  // Generate a unique ID for this masked element to link in-place and portal masks
+  // Using counter + timestamp for guaranteed uniqueness across rapid mask creation
+  maskIdCounter++;
+  const maskId = 'spyweb-mask-' + maskIdCounter + '-' + Date.now();
+  
   // For image and video elements, we need special handling since we can't append children to <img>/<video>
   const isImageElement = element.tagName === 'IMG';
   const isVideoElement = element.tagName === 'VIDEO';
@@ -492,11 +542,14 @@ function applyMaskToElement(element, maskedElement) {
     // Remove existing mask if any
     const existingMask = wrapper.querySelector('.spyweb-mask');
     if (existingMask) {
+      // Also remove the corresponding portal mask
+      removePortalMaskById(existingMask.getAttribute('data-mask-id'));
       existingMask.remove();
     }
     
     // Mark element as masked
     element.classList.add('spyweb-masked');
+    element.setAttribute('data-mask-id', maskId);
     
     // Hide the original image/video so only the mask is visible
     element.style.visibility = 'hidden';
@@ -504,21 +557,29 @@ function applyMaskToElement(element, maskedElement) {
     // Create mask overlay
     const mask = createMaskElement(element, maskedElement);
     mask.style.pointerEvents = 'none';
+    mask.setAttribute('data-mask-id', maskId);
     
     // Append mask to wrapper
     wrapper.appendChild(mask);
+    
+    // Create portal mask for guaranteed top-level visibility
+    createPortalMask(element, maskedElement, maskId);
   } else {
     // Remove existing mask if any
     const existingMask = element.querySelector('.spyweb-mask');
     if (existingMask) {
+      // Also remove the corresponding portal mask
+      removePortalMaskById(existingMask.getAttribute('data-mask-id'));
       existingMask.remove();
     }
     
     // Mark element as masked
     element.classList.add('spyweb-masked');
+    element.setAttribute('data-mask-id', maskId);
     
     // Create mask overlay
     const mask = createMaskElement(element, maskedElement);
+    mask.setAttribute('data-mask-id', maskId);
     
     // For input elements, allow interaction
     if (maskedElement.isInput) {
@@ -539,6 +600,92 @@ function applyMaskToElement(element, maskedElement) {
     // Position mask
     element.style.position = 'relative';
     element.appendChild(mask);
+    
+    // Create portal mask for guaranteed top-level visibility
+    createPortalMask(element, maskedElement, maskId);
+  }
+}
+
+// Create a portal mask that is positioned at the document body level
+// This ensures the mask is always on top regardless of stacking contexts
+function createPortalMask(element, maskedElement, maskId) {
+  if (!maskPortalContainer) {
+    createMaskPortalContainer();
+  }
+  
+  // Create the portal overlay mask
+  const portalMask = createMaskElement(element, maskedElement);
+  portalMask.className = 'spyweb-mask-portal-overlay';
+  portalMask.setAttribute('data-mask-id', maskId);
+  portalMask.style.pointerEvents = 'none';
+  
+  // Position the portal mask to cover the element's exact location
+  updatePortalMaskPosition(portalMask, element);
+  
+  // Store reference to the source element for position updates
+  portalMask._sourceElement = element;
+  
+  // Append to portal container
+  maskPortalContainer.appendChild(portalMask);
+  
+  // Set up position tracking for dynamic updates
+  setupPortalMaskPositionTracking(portalMask, element);
+}
+
+// Update portal mask position to match source element
+function updatePortalMaskPosition(portalMask, element) {
+  const rect = element.getBoundingClientRect();
+  portalMask.style.top = rect.top + 'px';
+  portalMask.style.left = rect.left + 'px';
+  portalMask.style.width = rect.width + 'px';
+  portalMask.style.height = rect.height + 'px';
+}
+
+// Set up position tracking for portal masks (handles scroll and resize)
+function setupPortalMaskPositionTracking(portalMask, element) {
+  // Track pending RAF to prevent multiple simultaneous updates
+  let rafPending = false;
+  
+  // Use a single RAF-based update function with debouncing
+  const updatePosition = () => {
+    rafPending = false;
+    if (!portalMask.isConnected || !element.isConnected) {
+      return; // Stop if either is removed from DOM
+    }
+    updatePortalMaskPosition(portalMask, element);
+  };
+  
+  // Debounced handler that only queues one RAF at a time
+  const scheduleUpdate = () => {
+    if (!rafPending) {
+      rafPending = true;
+      requestAnimationFrame(updatePosition);
+    }
+  };
+  
+  // Listen for scroll and resize events
+  window.addEventListener('scroll', scheduleUpdate, { passive: true });
+  window.addEventListener('resize', scheduleUpdate, { passive: true });
+  
+  // Store handlers for cleanup
+  portalMask._scrollHandler = scheduleUpdate;
+  portalMask._resizeHandler = scheduleUpdate;
+}
+
+// Remove portal mask by ID
+function removePortalMaskById(maskId) {
+  if (!maskId || !maskPortalContainer) return;
+  
+  const portalMask = maskPortalContainer.querySelector(`[data-mask-id="${maskId}"]`);
+  if (portalMask) {
+    // Clean up event listeners
+    if (portalMask._scrollHandler) {
+      window.removeEventListener('scroll', portalMask._scrollHandler);
+    }
+    if (portalMask._resizeHandler) {
+      window.removeEventListener('resize', portalMask._resizeHandler);
+    }
+    portalMask.remove();
   }
 }
 
@@ -826,7 +973,21 @@ function stopInspection() {
 
 // Refresh masks
 async function refreshMasks() {
-  // Remove all existing masks
+  // Remove all existing portal masks first
+  if (maskPortalContainer) {
+    // Clean up event listeners from portal masks
+    maskPortalContainer.querySelectorAll('.spyweb-mask-portal-overlay').forEach(portalMask => {
+      if (portalMask._scrollHandler) {
+        window.removeEventListener('scroll', portalMask._scrollHandler);
+      }
+      if (portalMask._resizeHandler) {
+        window.removeEventListener('resize', portalMask._resizeHandler);
+      }
+    });
+    maskPortalContainer.innerHTML = '';
+  }
+  
+  // Remove all existing in-place masks
   document.querySelectorAll('.spyweb-mask').forEach(m => m.remove());
   
   // Restore hidden content
@@ -838,6 +999,7 @@ async function refreshMasks() {
   document.querySelectorAll('.spyweb-masked').forEach(el => {
     el.classList.remove('spyweb-masked');
     el.removeAttribute('data-spyweb-original-visibility');
+    el.removeAttribute('data-mask-id');
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
       el.style.color = '';
       el.style.caretColor = '';

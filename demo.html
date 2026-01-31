@@ -383,6 +383,30 @@
         <br>3. Overflow is hidden to maintain element boundaries
       </p>
     </div>
+    
+    <div class="section">
+      <h2>Overlapping Elements Test</h2>
+      <p style="margin-bottom: 15px;">Test that masks stay on top when elements overlap. The masked content should remain hidden even when another element partially covers it:</p>
+      <div style="position: relative; height: 200px; margin-top: 20px;">
+        <!-- Bottom element (to be masked) - contains sensitive info -->
+        <div id="overlap-bottom" style="position: absolute; top: 0; left: 0; width: 250px; height: 100px; background: #fff3cd; border: 2px solid #ffc107; padding: 15px; border-radius: 8px; z-index: 1;">
+          <strong>Sensitive Info (Bottom Layer):</strong><br>
+          SSN: 123-45-6789<br>
+          Account: 9876543210
+        </div>
+        <!-- Overlapping element with higher z-index -->
+        <div id="overlap-top" style="position: absolute; top: 60px; left: 150px; width: 200px; height: 100px; background: #d1ecf1; border: 2px solid #bee5eb; padding: 15px; border-radius: 8px; z-index: 10; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+          <strong>Overlapping Element:</strong><br>
+          This has higher z-index
+        </div>
+      </div>
+      <p style="margin-top: 80px; font-size: 12px; color: #666;">
+        <strong>Expected behavior:</strong> When masking the yellow "Sensitive Info" box:
+        <br>1. The mask should cover the entire yellow box
+        <br>2. Even where the blue box overlaps, the mask should appear on top of both
+        <br>3. The mask should load immediately when page refreshes
+      </p>
+    </div>
   </div>
 </body>
 </html>

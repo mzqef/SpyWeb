@@ -1,9 +1,15 @@
 /* Content script styles for SpyWeb */
 
+/* Z-index levels for SpyWeb overlays (max z-index is 2147483647) */
+:root {
+  --spyweb-z-max: 2147483647;        /* Highest priority - highlight overlay */
+  --spyweb-z-mask: 2147483646;       /* Mask overlays (both in-place and portal) */
+}
+
 /* Highlight overlay for element selection */
 #spyweb-highlight-overlay {
   position: absolute;
-  z-index: 2147483647;
+  z-index: var(--spyweb-z-max);
   pointer-events: none;
   border: 2px solid #007bff;
   background-color: rgba(0, 123, 255, 0.1);
@@ -11,17 +17,38 @@
   transition: all 0.1s ease;
 }
 
-/* Mask overlay */
+/* Mask overlay (in-place mask inside element) */
 .spyweb-mask {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 1000;
+  z-index: var(--spyweb-z-mask);
   background-color: #000;
   color: #fff;
   pointer-events: all;
+  overflow: hidden;
+}
+
+/* Portal mask container (fixed at body level for guaranteed z-index) */
+.spyweb-mask-portal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  z-index: var(--spyweb-z-mask);
+  pointer-events: none;
+}
+
+/* Portal mask overlay (positioned absolutely relative to viewport) */
+.spyweb-mask-portal-overlay {
+  position: fixed;
+  z-index: var(--spyweb-z-mask);
+  background-color: #000;
+  color: #fff;
+  pointer-events: none;
   overflow: hidden;
 }
 
@@ -61,7 +88,7 @@ video.spyweb-masked {
   padding: 15px 20px;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  z-index: 2147483646;
+  z-index: var(--spyweb-z-mask);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   font-size: 14px;
   opacity: 0;
