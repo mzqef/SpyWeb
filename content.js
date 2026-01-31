@@ -372,8 +372,8 @@ async function addMaskedElement(element) {
   }
   
   // Check if already masked
-  const exists = allMasked[domain].some(m => m.selector === selector);
-  if (!exists) {
+  const existingIndex = allMasked[domain].findIndex(m => m.selector === selector);
+  if (existingIndex === -1) {
     allMasked[domain].push(maskedElement);
     await chrome.storage.local.set({ maskedElements: allMasked });
     
@@ -388,7 +388,40 @@ async function addMaskedElement(element) {
     // Show notification
     showNotification('Element masked successfully');
   } else {
-    showNotification('Element already masked');
+    // Update existing mask with new settings (mask on mask)
+    const previousMask = allMasked[domain][existingIndex];
+    allMasked[domain][existingIndex] = maskedElement;
+    await chrome.storage.local.set({ maskedElements: allMasked });
+    
+    // Push to undo stack for undo/redo functionality (store previous mask for undo)
+    undoStack.push({ action: 'update', element: maskedElement, previousElement: previousMask, domain });
+    redoStack = []; // Clear redo stack on new action
+    
+    // Update mask on element - need to refresh to apply new settings
+    maskedElements = allMasked[domain] || [];
+    
+    // Remove existing mask first, then apply new one
+    const existingMask = element.querySelector('.spyweb-mask');
+    if (existingMask) {
+      existingMask.remove();
+    }
+    
+    // For image/video elements, also remove mask from wrapper
+    if (element.tagName === 'IMG' || element.tagName === 'VIDEO') {
+      const wrapperClass = element.tagName === 'VIDEO' ? 'spyweb-video-wrapper' : 'spyweb-img-wrapper';
+      const wrapper = element.closest('.' + wrapperClass);
+      if (wrapper) {
+        const wrapperMask = wrapper.querySelector('.spyweb-mask');
+        if (wrapperMask) {
+          wrapperMask.remove();
+        }
+      }
+    }
+    
+    applyMaskToElement(element, maskedElement);
+    
+    // Show notification
+    showNotification('Mask updated successfully');
   }
 }
 
@@ -869,6 +902,24 @@ async function undoMask() {
         return { success: true, canUndo: undoStack.length > 0, canRedo: true };
       }
     }
+  } else if (lastAction.action === 'update') {
+    // Undo an update action: restore the previous mask settings
+    if (allMasked[domain]) {
+      const index = allMasked[domain].findIndex(m => m.selector === lastAction.element.selector);
+      if (index !== -1) {
+        allMasked[domain][index] = lastAction.previousElement;
+        await chrome.storage.local.set({ maskedElements: allMasked });
+        
+        // Push to redo stack
+        redoStack.push(lastAction);
+        
+        // Refresh the masks on page
+        await refreshMasks();
+        
+        showNotification('Undo: Mask reverted to previous style');
+        return { success: true, canUndo: undoStack.length > 0, canRedo: true };
+      }
+    }
   }
   
   return { success: false, canUndo: undoStack.length > 0, canRedo: redoStack.length > 0 };
@@ -908,6 +959,24 @@ async function redoMask() {
       
       showNotification('Redo: Mask restored');
       return { success: true, canUndo: true, canRedo: redoStack.length > 0 };
+    }
+  } else if (lastUndone.action === 'update') {
+    // Redo an update action: re-apply the updated mask settings
+    if (allMasked[domain]) {
+      const index = allMasked[domain].findIndex(m => m.selector === lastUndone.element.selector);
+      if (index !== -1) {
+        allMasked[domain][index] = lastUndone.element;
+        await chrome.storage.local.set({ maskedElements: allMasked });
+        
+        // Push back to undo stack
+        undoStack.push(lastUndone);
+        
+        // Refresh the masks on page
+        await refreshMasks();
+        
+        showNotification('Redo: Mask updated again');
+        return { success: true, canUndo: true, canRedo: redoStack.length > 0 };
+      }
     }
   }
   
