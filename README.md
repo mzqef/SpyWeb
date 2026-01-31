@@ -1,5 +1,7 @@
 # SpyWeb
 
+**AI CODING PROJECT**
+
 SpyWeb is a web browser extension helping you mask off sensitive information on your screen.
 
 ## Features
