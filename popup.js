@@ -63,10 +63,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     popoutBtn.style.display = 'none';
   }
   
-  // Load saved settings
+  // Load saved settings (sync storage for regular settings)
   const settings = await chrome.storage.sync.get(['maskSettings']);
   if (settings.maskSettings) {
     applySettings(settings.maskSettings);
+  }
+  
+  // Load local image separately from local storage
+  const localData = await chrome.storage.local.get(['maskImageLocal']);
+  if (localData.maskImageLocal) {
+    // If settings indicate to use local image, apply it
+    if (settings.maskSettings && settings.maskSettings.useLocalImage) {
+      maskImageInput.value = localData.maskImageLocal;
+      uploadedFileName.textContent = '✓ Local image loaded';
+    }
   }
 
   // Update inspection button state
@@ -95,12 +105,10 @@ function applySettings(settings) {
   if (settings.maskColor) {
     maskColorInput.value = settings.maskColor;
   }
-  if (settings.maskImage) {
+  // Only apply maskImage (URL) if not using local image
+  // Local image is applied separately in DOMContentLoaded
+  if (settings.maskImage && !settings.useLocalImage) {
     maskImageInput.value = settings.maskImage;
-    // Show indicator if it's a data URL (uploaded image)
-    if (settings.maskImage.startsWith('data:')) {
-      uploadedFileName.textContent = '✓ Local image loaded';
-    }
   }
   if (settings.maskScope) {
     document.querySelector(`input[name="maskScope"][value="${settings.maskScope}"]`).checked = true;
@@ -121,12 +129,18 @@ function applySettings(settings) {
 function getCurrentSettings() {
   const maskType = document.querySelector('input[name="maskType"]:checked').value;
   const maskScope = document.querySelector('input[name="maskScope"]:checked').value;
+  const maskImageValue = maskImageInput.value;
+  
+  // Check if the current image is a local image (data URL)
+  const isLocalImage = maskImageValue.startsWith('data:');
   
   return {
     maskType,
     maskText: maskTextInput.value,
     maskColor: maskColorInput.value,
-    maskImage: maskImageInput.value,
+    // Only include URL in maskImage, not data URLs (local images stored separately)
+    maskImage: isLocalImage ? '' : maskImageValue,
+    useLocalImage: isLocalImage,
     maskScope,
     // New text styling settings
     textMaskColor: textMaskColorInput.value,
@@ -135,9 +149,27 @@ function getCurrentSettings() {
   };
 }
 
+// Handle local image storage - stores data URLs in local storage (larger quota)
+// and clears local storage when switching to URL-based images
+async function handleLocalImageStorage(maskImageValue) {
+  if (maskImageValue.startsWith('data:')) {
+    // Store local image in local storage (larger quota)
+    await chrome.storage.local.set({ maskImageLocal: maskImageValue });
+  } else {
+    // Clear local image when switching to URL or clearing the input
+    await chrome.storage.local.remove(['maskImageLocal']);
+  }
+}
+
 // Save settings
 async function saveSettings() {
   const settings = getCurrentSettings();
+  const maskImageValue = maskImageInput.value;
+  
+  // Handle local image storage separately
+  await handleLocalImageStorage(maskImageValue);
+  
+  // Save settings to sync storage (without the large data URL)
   await chrome.storage.sync.set({ maskSettings: settings });
 }
 
@@ -186,11 +218,17 @@ inspectBtn.addEventListener('click', async () => {
   await saveSettings();
   const settings = getCurrentSettings();
   
+  // Include the actual image data for content script
+  const settingsWithImage = {
+    ...settings,
+    maskImage: maskImageInput.value // Include actual value for content script
+  };
+  
   const tabId = await getTargetTabId();
   if (tabId) {
     chrome.tabs.sendMessage(tabId, {
       action: inspecting ? 'stopInspection' : 'startInspection',
-      settings
+      settings: settingsWithImage
     }, (response) => {
       if (chrome.runtime.lastError) {
         showStatus('Error: Could not connect to page. Please refresh.', 'error');
@@ -255,7 +293,20 @@ clearAllBtn.addEventListener('click', async () => {
 // Save settings and broadcast to content script if inspecting
 async function saveAndBroadcastSettings() {
   const settings = getCurrentSettings();
+  const maskImageValue = maskImageInput.value;
+  
+  // Handle local image storage separately
+  await handleLocalImageStorage(maskImageValue);
+  
+  // Save settings to sync storage (without the large data URL)
   await chrome.storage.sync.set({ maskSettings: settings });
+  
+  // For content script, we need to include the actual image data
+  // Build settings with the actual image for the content script
+  const settingsWithImage = {
+    ...settings,
+    maskImage: maskImageValue // Include actual value for content script
+  };
   
   // Always broadcast settings change to content script
   // This ensures content script has latest settings even if popup's inspecting state is out of sync
@@ -263,7 +314,7 @@ async function saveAndBroadcastSettings() {
   if (tabId) {
     chrome.tabs.sendMessage(tabId, {
       action: 'updateSettings',
-      settings
+      settings: settingsWithImage
     }).catch((error) => {
       // Expected error when content script not loaded (e.g., on chrome:// pages)
       // Other errors are silently ignored as they don't affect core functionality
@@ -406,4 +457,5 @@ maskImageInput.addEventListener('input', () => {
   if (!maskImageInput.value.startsWith('data:')) {
     uploadedFileName.textContent = '';
   }
+  // Note: Local image storage is handled by handleLocalImageStorage() in saveAndBroadcastSettings()
 });
