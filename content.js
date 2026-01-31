@@ -107,6 +107,14 @@ async function init() {
   const data = await chrome.storage.sync.get(['maskSettings']);
   if (data.maskSettings) {
     settings = data.maskSettings;
+    
+    // If using local image, load it from local storage
+    if (settings.useLocalImage) {
+      const localData = await chrome.storage.local.get(['maskImageLocal']);
+      if (localData.maskImageLocal) {
+        settings.maskImage = localData.maskImageLocal;
+      }
+    }
   }
   
   // Load and apply masked elements
@@ -896,6 +904,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Sent by background.js when storage changes (syncs settings across tabs)
     if (request.settings) {
       settings = request.settings;
+      // If using local image, load it from local storage asynchronously
+      if (settings.useLocalImage) {
+        chrome.storage.local.get(['maskImageLocal']).then(localData => {
+          if (localData.maskImageLocal) {
+            settings.maskImage = localData.maskImageLocal;
+          }
+        });
+      }
     }
     sendResponse({ success: true });
   } else if (request.action === 'undo') {

@@ -7,6 +7,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     maskText: '████████',
     maskColor: '#000000',
     maskImage: '',
+    useLocalImage: false, // Flag to indicate whether to use local image (stored separately in local storage)
     maskScope: 'current',
     // New text styling settings
     textMaskColor: '#000000',
