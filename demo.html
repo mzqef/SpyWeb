@@ -361,7 +361,7 @@
     
     <div class="section">
       <h2>Image Mask Tiling Test</h2>
-      <p style="margin-bottom: 15px;">Test image mask tiling: When an image mask is smaller than the element, it should be tiled to cover the entire element (e.g., a 100x400 image covering a 100x1000 element should show ~3 tiles):</p>
+      <p style="margin-bottom: 15px;">Test image mask tiling: The mask is compressed to match the smaller dimension and tiled to cover the entire element (e.g., a 120x120 mask on a 100x400 element is compressed to 100x100 and uses 4 tiles):</p>
       <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start;">
         <!-- Tall element to test image tiling (100x500) -->
         <div id="tall-element-test" style="width: 100px; height: 500px; background: linear-gradient(180deg, #e0e0e0 0%, #b0b0b0 100%); border: 2px solid #666; border-radius: 4px; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; text-orientation: mixed; color: #555; font-size: 14px;">
@@ -378,8 +378,8 @@
       </div>
       <p style="margin-top: 15px; font-size: 12px; color: #666;">
         <strong>Expected behavior:</strong> When using "Image" mask type with an image that doesn't match the element's aspect ratio:
-        <br>1. Image is scaled to match element width
-        <br>2. If scaled height &lt; element height, image is repeated/tiled vertically to fill
+        <br>1. Mask is compressed to match the smaller dimension of the element (e.g., 120x120 mask on 100x400 element becomes 100x100)
+        <br>2. Tiles are created to cover the entire element (e.g., 100x400 element needs 4 tiles of 100x100)
         <br>3. Overflow is hidden to maintain element boundaries
       </p>
     </div>

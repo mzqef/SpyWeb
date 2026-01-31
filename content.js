@@ -683,35 +683,46 @@ function createMaskElement(element, maskedElement) {
         const imgNaturalHeight = imgEl.naturalHeight;
         
         if (imgNaturalWidth > 0 && imgNaturalHeight > 0 && elementWidth > 0 && elementHeight > 0) {
-          // Scale image to element width while maintaining aspect ratio
-          const scaledHeight = (elementWidth / imgNaturalWidth) * imgNaturalHeight;
+          // Compress mask to match the smaller dimension of the area
+          // e.g., if area is 100x400 and mask is 120x120, compress mask to 100x100
+          const tileSize = Math.min(elementWidth, elementHeight);
+          
+          // Calculate how many tiles needed in each direction
+          const tilesX = Math.ceil(elementWidth / tileSize);
+          const tilesY = Math.ceil(elementHeight / tileSize);
           
           // Clear existing content before adding styled images
           imgContainer.innerHTML = '';
           
-          // Check if we need to tile the image vertically
-          if (scaledHeight < elementHeight) {
-            // Need to repeat image vertically to cover element height
-            const tilesNeeded = Math.ceil(elementHeight / scaledHeight);
+          // Create a grid container for proper tiling
+          const gridContainer = document.createElement('div');
+          gridContainer.style.display = 'flex';
+          gridContainer.style.flexDirection = 'column';
+          gridContainer.style.width = '100%';
+          gridContainer.style.height = '100%';
+          gridContainer.setAttribute('aria-hidden', 'true'); // Purely visual masking element
+          
+          // Create rows of tiles
+          for (let row = 0; row < tilesY; row++) {
+            const rowDiv = document.createElement('div');
+            rowDiv.style.display = 'flex';
+            rowDiv.style.flexShrink = '0';
+            rowDiv.style.height = tileSize + 'px';
             
-            for (let i = 0; i < tilesNeeded; i++) {
+            for (let col = 0; col < tilesX; col++) {
               const tileImg = document.createElement('img');
               tileImg.src = maskSettings.maskImage;
-              tileImg.style.width = '100%';
-              tileImg.style.height = scaledHeight + 'px';
-              tileImg.style.display = 'block';
+              tileImg.style.width = tileSize + 'px';
+              tileImg.style.height = tileSize + 'px';
+              tileImg.style.flexShrink = '0';
               tileImg.style.objectFit = 'fill';
-              imgContainer.appendChild(tileImg);
+              rowDiv.appendChild(tileImg);
             }
-          } else {
-            // Scaled image is tall enough, just scale to width
-            const singleImg = document.createElement('img');
-            singleImg.src = maskSettings.maskImage;
-            singleImg.style.width = '100%';
-            singleImg.style.height = 'auto';
-            singleImg.style.display = 'block';
-            imgContainer.appendChild(singleImg);
+            
+            gridContainer.appendChild(rowDiv);
           }
+          
+          imgContainer.appendChild(gridContainer);
         }
       };
       
