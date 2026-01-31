@@ -73,11 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       action: 'registerFloatingPanel',
       windowId: currentWindow.id
     });
-    
-    // Unregister when the window is closed
-    window.addEventListener('beforeunload', () => {
-      chrome.runtime.sendMessage({ action: 'unregisterFloatingPanel' });
-    });
+    // Note: Cleanup when window closes is handled by chrome.windows.onRemoved in background.js
   }
   
   // Load saved settings (sync storage for regular settings)

@@ -53,13 +53,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ success: true });
     return true;
   }
-  
-  // Handle floating panel window unregistration
-  if (request.action === 'unregisterFloatingPanel') {
-    floatingPanelWindowId = null;
-    sendResponse({ success: true });
-    return true;
-  }
 });
 
 // Keep floating panel always on top when other windows are focused
