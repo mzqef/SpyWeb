@@ -373,7 +373,10 @@ maskImageFileInput.addEventListener('change', async (event) => {
     maskImageInput.value = dataUrl;
     
     // Automatically select the "image" mask type when uploading a local image
-    document.querySelector('input[name="maskType"][value="image"]').checked = true;
+    const imageRadioBtn = document.querySelector('input[name="maskType"][value="image"]');
+    if (imageRadioBtn) {
+      imageRadioBtn.checked = true;
+    }
     
     // Show uploaded file name
     uploadedFileName.textContent = `✓ ${file.name}`;
